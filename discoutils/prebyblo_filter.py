@@ -60,7 +60,7 @@ def read_configuration(args):
                     'R': re.compile('.*/RB')}
 
     feature_patterns = {'deps': re.compile('T:.*'),
-                        'wins': re.compile('.*-.*:')}
+                        'wins': re.compile('.+-(HEAD|DEP):.+')}
 
     def pos_pattern_validator(v):
         try:
