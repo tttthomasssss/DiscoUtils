@@ -59,8 +59,10 @@ def read_configuration(args):
                     'J': re.compile('.*/J'),
                     'R': re.compile('.*/RB')}
 
-    feature_patterns = {'deps': re.compile('T:.*'),
-                        'wins': re.compile('.+-(HEAD|DEP):.+')}
+    feature_patterns = {'wins': re.compile('T:.*'),
+                        'deps': re.compile('.+-(HEAD|DEP):.+'),
+                        'all': re.compile('.+'),
+                        }
 
     def pos_pattern_validator(v):
         try:
@@ -82,7 +84,7 @@ def read_configuration(args):
                         default={pos_patterns['N']},
                         help='Entry type to accept. Valid choices are N, V, J, R')
     parser.add_argument('-feats', required=False, default='deps', type=feature_pattern_validator,
-                        help='Feature type to accept. Valid choices are deps or wins')
+                        help='Feature type to accept. Valid choices are deps, wins or all')
 
     parser.add_argument('-o', '--output', required=False, default=None,
                         help='Name of output file. Default')
