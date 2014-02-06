@@ -98,7 +98,8 @@ def main():
     counts, total_lines = count(parameters.filename, parameters.pos) # make count dictionary
     logging.info("Number of counted words is %d", len(counts))
 
-    with open(output) as outfile:
+    with open(output, 'w') as outfile:
+        logging.info('Writing to %s', output)
         do_filtering(parameters.filename, outfile, parameters.threshold,
                      parameters.pos, parameters.feats, counts, total_lines)
 

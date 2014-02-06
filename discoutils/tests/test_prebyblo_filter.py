@@ -1,4 +1,3 @@
-from textwrap import dedent
 import pytest
 import re
 from prebyblo_filter import count, do_filtering
