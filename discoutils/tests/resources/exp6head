@@ -1,0 +1,22 @@
+i/PRON	nsubjpass-HEAD:scare	T:get	T:scare	T:.
+get/V	T:i	T:scare	T:.	auxpass-HEAD:scare
+scare/V	nsubjpass-DEP:i	T:i	T:get	T:.	auxpass-DEP:get	punct-DEP:.
+./PUNCT	punct-HEAD:scare	T:i	T:get	T:scare
+``/UNK	punct-HEAD:have	T:there	T:have	T:to	T:be	T:budgetary	T:consideration	T:.
+there/UNK	T:``	T:have	T:to	T:be	T:budgetary	T:consideration	T:.	expl-HEAD:have
+have/V	T:``	T:there	T:to	T:be	T:budgetary	T:consideration	T:.	expl-DEP:there	xcomp-DEP:consideration	punct-DEP:``	punct-DEP:.
+to/UNK	T:``	T:there	T:have	T:be	T:budgetary	T:consideration	T:.	aux-HEAD:consideration
+be/V	cop-HEAD:consideration	T:``	T:there	T:have	T:to	T:budgetary	T:consideration	T:.
+budgetary/J	T:``	T:there	T:have	T:to	T:be	T:consideration	T:.	amod-HEAD:consideration
+consideration/N	amod-DEP:budgetary	T:``	T:there	T:have	T:to	T:be	T:budgetary	T:.	cop-DEP:be	xcomp-HEAD:have	aux-DEP:to
+./PUNCT	punct-HEAD:have	T:``	T:there	T:have	T:to	T:be	T:budgetary	T:consideration
+it/PRON	nsubjpass-HEAD:blame	T:be	T:blame	T:on	T:bad	T:construction	T:.
+be/V	T:it	T:blame	T:on	T:bad	T:construction	T:.	auxpass-HEAD:blame
+blame/V	nsubjpass-DEP:it	T:it	T:be	T:on	T:bad	T:construction	T:.	auxpass-DEP:be	prep-DEP:on	punct-DEP:.
+on/CONJ	pobj-DEP:construction	T:it	T:be	T:blame	T:bad	T:construction	T:.	prep-HEAD:blame
+bad/J	T:it	T:be	T:blame	T:on	T:construction	T:.	amod-HEAD:construction
+construction/N	amod-DEP:bad	T:it	T:be	T:blame	T:on	T:bad	T:.	pobj-HEAD:on
+./PUNCT	punct-HEAD:blame	T:it	T:be	T:blame	T:on	T:bad	T:construction
+it/PRON	T:be	T:a	T:fine	T:balancing	T:act	T:.	nsubj-HEAD:act
+be/V	cop-HEAD:act	T:it	T:a	T:fine	T:balancing	T:act	T:.
+a/DET	T:it	T:be	T:fine	T:balancing	T:act	T:.	det-HEAD:act
