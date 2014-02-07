@@ -52,7 +52,7 @@ def do_filtering(filename, outstream, threshold, pos_patterns, feature_pattern, 
                 logging.info("Processed %d lines (%2.1f percent)", linesprocessed, percent)
 
 
-def read_configuration(args):
+def read_configuration():
     #first 2 args must be filename and frequency threshold
     pos_patterns = {'N': re.compile('.*/N'),
                     'V': re.compile('.*/V'),
