@@ -1,6 +1,6 @@
 import pytest
 import re
-from prebyblo_filter import count, do_filtering
+from discoutils.prebyblo_filter import count, do_filtering
 
 
 @pytest.fixture
