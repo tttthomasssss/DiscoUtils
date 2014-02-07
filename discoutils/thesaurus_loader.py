@@ -6,7 +6,7 @@ import shelve
 import numpy
 from discoutils.tokens import DocumentFeature
 
-from discoutils.misc import walk_nonoverlapping_pairs
+from discoutils.collections_utils import walk_nonoverlapping_pairs
 from discoutils.io_utils import write_vectors_to_disk
 
 

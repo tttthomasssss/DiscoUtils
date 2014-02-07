@@ -9,7 +9,7 @@ import numpy as np
 from numpy.testing import assert_array_equal
 
 from discoutils.thesaurus_loader import _smart_lower, Thesaurus
-from discoutils.misc import walk_nonoverlapping_pairs
+from discoutils.collections_utils import walk_nonoverlapping_pairs
 
 
 __author__ = 'mmb28'
