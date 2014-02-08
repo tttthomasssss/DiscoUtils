@@ -68,8 +68,9 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
 def reformat_entries(filename, suffix, function, separator='\t'):
     # todo unit test
     """
-    Applies a function to the first column of a file **in place**.
+    Applies a function to the first column of a file
     :param filename: File to apply transformation to.
+    :param suffix: suffix to append to the output file
     :param function: Function to apply, takes and returns a single string.
     :param separator: The columns in the file are separated by this.
     """
@@ -84,16 +85,25 @@ def reformat_entries(filename, suffix, function, separator='\t'):
     return outname
 
 
-def julie_transform(input, pos1='J', pos2='N', separator='_'):
-    # todo unit test
-    '''african/J:amod-HEAD:ancestry -> african/J_ancestry/N'''
-    head = input.split(':')[-1]
-    modifier = input.split('/')[0]
-    return '{modifier}/{pos1}{separator}{head}/{pos2}'.format(**locals())
+def clean(entry):
+    """
+    CONVERT A FILE FROM JULIE'S FORMAT TO MINE
+    absurdity/N:amod-DEP:total/J -> total/J_absurdity/N
+    academy/N:nn-HEAD:award/N -> academy/N_award/N
+    :param entry:
+    :return:
+    """
+    import re
 
-
-def julie_transform2(input, pos1='J', pos2='N', separator='_'):
-    '''account/N:nn-DEP:bank -> bank/N_account/N'''
-    modifier = input.split(':')[-1]
-    head = input.split('/')[0]
-    return '{modifier}/{pos1}{separator}{head}/{pos2}'.format(**locals())
+    pattern = re.compile('(.*):(.*):(.*)')
+    a, relation, b = pattern.match(entry).groups()
+    if relation == 'amod-HEAD':
+        return '{}_{}'.format(a, b)
+    elif relation == 'amod-DEP':
+        return '{}_{}'.format(b, a)
+    elif relation == 'nn-HEAD':
+        return '{}_{}'.format(a, b)
+    elif relation == 'nn-DEP':
+        return '{}_{}'.format(b, a)
+    else:
+        raise ValueError('Can not convert entry %s' % entry)

@@ -14,6 +14,9 @@ def walk_overlapping_pairs(iterable):
 
 
 def walk_nonoverlapping_pairs(iterable, beg):
+    '''
+    s -> (s0,s1), (s2,s3), ...
+    '''
     for i in xrange(beg, min(len(iterable) - 1, len(iterable)), 2):  # step size 2
         yield (iterable[i], iterable[i + 1])
 

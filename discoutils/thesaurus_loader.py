@@ -129,10 +129,7 @@ class Thesaurus(object):
                                 # todo this better not be a neighbours file, merging doesn't work there
                                 logging.warn('Multiple entries for "%s" found. Merging.' % tokens[0])
                                 c = Counter(dict(to_return[key]))
-                                # print len(c)
                                 c.update(dict(to_insert))
-                                # print len(to_insert), len(c)
-                                # print '---'
                                 to_return[key] = [(k, v) for k, v in c.iteritems()]
                             else:
                                 to_return[key] = to_insert
@@ -143,6 +140,9 @@ class Thesaurus(object):
         return Thesaurus(to_return)
 
     def to_shelf(self, filename):
+        """
+        Uses the shelf module to persist this object to a file
+        """
         logging.info('Shelving thesaurus of size %d to %s', len(self), filename)
         d = shelve.open(filename, flag='c') # read and write
         for entry, features in self.iteritems():
@@ -195,6 +195,9 @@ class Thesaurus(object):
         return mat, self.v.feature_names_, rows
 
     def to_dissect_core_space(self):
+        """
+        Converts this object to a composes.semantic_space.space.Space
+        """
         from composes.matrix.sparse_matrix import SparseMatrix
         from composes.semantic_space.space import Space
 

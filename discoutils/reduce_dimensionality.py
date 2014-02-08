@@ -9,7 +9,7 @@ from operator import itemgetter
 from sklearn.decomposition import TruncatedSVD
 from discoutils.tokens import DocumentFeature
 from discoutils.thesaurus_loader import Thesaurus
-import numpy, scipy, time
+import scipy, time
 from discoutils.io_utils import write_vectors_to_disk
 import numpy as np
 
@@ -111,19 +111,11 @@ def do_svd(input_paths, output_prefix,
     :param output_prefix: Where to output the reduced files. An extension will be added.
     :param desired_counts_per_feature_type: how many entries to keep of each DocumentFeature type, by frequency. This
      is the PoS tag for unigram features and the feature type otherwise. For instance, pass in [('N', 2), ('AN', 0)] to
-    select 2 unigrams of PoS noun and 0 bigrams of type adjective-noun. Types that are not explicitly given a positive
+    select 2 unigrams of PoS N and 0 bigrams of type adjective-noun. Types that are not explicitly given a positive
     desired count are treated as if the desired count is 0.
-    :param reduce_to: what dimensionalities to reduce to
+    :param reduce_to: list of integers, what dimensionalities to reduce to
     :raise ValueError: If the loaded thesaurus is empty
     """
-
-    # if pos_per_output_dir:
-    #     if len(pos_per_output_dir) != len(output_prefix):
-    #         raise ValueError('Length of pos_per_output_dir should match length of output_prefix')
-    #     else:
-    #         logging.warn('Will write separate events file per PoS')
-    # else:
-    #     pos_per_output_dir = ['ALL'] * len(output_prefix)
 
     thesaurus = Thesaurus.from_tsv(input_paths, aggressive_lowercasing=False)
     if not thesaurus:
