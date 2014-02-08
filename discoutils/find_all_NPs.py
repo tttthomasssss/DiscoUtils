@@ -19,7 +19,7 @@ nn_pattern = re.compile('nn-DEP:(\S+?/N)') # an noun in a nn relation
 def go(infile, outstream):
     with open(infile) as inf:
         for i, line in enumerate(inf):
-            if i % 10000 == 0:
+            if i % 100000 == 0:
                 logging.info('Done %d lines', i)
 
             noun_match = noun_pattern.match(line)
