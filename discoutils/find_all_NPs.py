@@ -10,7 +10,7 @@ Requires features to have an associated PoS tag, see
 discoutils/tests/resources/exp10head.pbfiltered
 '''
 
-noun_pattern = re.compile('^(.+?/N).+') # a noun, non-greedy
+noun_pattern = re.compile('^(\S+?/N).+') # a noun, non-greedy
 an_pattern = re.compile('amod-DEP:(\S+?/J)') # an adjective in an amod relation, consisting of non-whitespace
 
 nn_pattern = re.compile('nn-DEP:(\S+?/N)') # an noun in a nn relation
