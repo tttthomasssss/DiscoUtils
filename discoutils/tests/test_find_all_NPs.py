@@ -12,6 +12,7 @@ def test_find_all_NPs():
                "AN:large/J_cat/N\n" \
                "AN:fluffy/J_cat/N\n" \
                "NN:house/N_cat/N\n" \
-               "NN:street/N_cat/N\n"
+               "NN:street/N_cat/N\n" \
+               "AN:troubled/J_activist/N\n"
     print '\n', s.getvalue()
     assert s.getvalue() == expected

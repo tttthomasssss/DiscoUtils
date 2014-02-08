@@ -11,9 +11,9 @@ discoutils/tests/resources/exp10head.pbfiltered
 '''
 
 noun_pattern = re.compile('^(.+?/N).+') # a noun, non-greedy
-an_pattern = re.compile('amod-DEP:(.+?/J)') # an adjective in an amod relation
+an_pattern = re.compile('amod-DEP:(\S+?/J)') # an adjective in an amod relation, consisting of non-whitespace
 
-nn_pattern = re.compile('nn-DEP:(.+?/N)') # an noun in a nn relation
+nn_pattern = re.compile('nn-DEP:(\S+?/N)') # an noun in a nn relation
 
 
 def go(infile, outstream):
