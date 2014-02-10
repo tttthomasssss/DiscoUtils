@@ -1,11 +1,11 @@
 __author__ = 'miroslavbatchkarov'
-from discoutils.find_all_NPs import go, go_get_vectors
+from discoutils.find_all_NPs import go_get_NPs, go_get_vectors
 from cStringIO import StringIO
 
 
 def test_find_all_NPs():
     s = StringIO()
-    go('discoutils/tests/resources/exp10head.pbfiltered', s)
+    go_get_NPs('discoutils/tests/resources/exp10head.pbfiltered', s)
     expected = "AN:full-time/J_tribunal/N\n" \
                "AN:ordinary/J_session/N\n" \
                "NN:council/N_session/N\n" \
@@ -20,7 +20,7 @@ def test_find_all_NPs():
 
 def test_find_all_NPs_with_seed():
     s = StringIO()
-    go('discoutils/tests/resources/exp10head.pbfiltered', s, seed_set={'ordinary/J'})
+    go_get_NPs('discoutils/tests/resources/exp10head.pbfiltered', s, seed_set={'ordinary/J'})
     expected = "AN:ordinary/J_session/N\n"
     assert s.getvalue() == expected
 
