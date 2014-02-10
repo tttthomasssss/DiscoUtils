@@ -35,7 +35,7 @@ def _filter_out_infrequent_entries(desired_counts_per_feature_type, thesaurus):
     # but it is strongly correlated with one normally thinks of as entry frequency
     desired_rows = []
     for desired_pos, desired_count in desired_counts_per_feature_type:
-        row_of_current_pos = pos_tags == desired_pos # what rows are the right PoS tags at, boolean mask array
+        row_of_current_pos = pos_tags == desired_pos  # what rows are the right PoS tags at, boolean mask array
         # indices of the array sorted by row sum, and where the pos == desired_pos
         if desired_count > 0:
             sorted_idx_by_sum = np.ravel(mat.sum(1)).argsort()
@@ -99,9 +99,11 @@ def _write_to_disk(reduced_mat, method, prefix, rows):
     #    pickle.dump(method, outfile)
 
 
-def do_svd(input_paths, output_prefix,
+def do_svd(input_paths,
+           output_prefix,
            desired_counts_per_feature_type=[('N', 8), ('V', 4), ('J', 4), ('RB', 2), ('AN', 2)],
-           reduce_to=[3, 10, 15]):
+           reduce_to=[3, 10, 15],
+           apply_to=[]):
     """
 
     Performs truncated SVD. A copy of the trained sklearn SVD estimator will be also be saved
@@ -114,6 +116,9 @@ def do_svd(input_paths, output_prefix,
     select 2 unigrams of PoS N and 0 bigrams of type adjective-noun. Types that are not explicitly given a positive
     desired count are treated as if the desired count is 0.
     :param reduce_to: list of integers, what dimensionalities to reduce to
+    :param apply_to: list of file paths. After SVD has been trained on input_paths, it can be applied to
+    apply_to. Output will be writen to the same file
+
     :raise ValueError: If the loaded thesaurus is empty
     """
 
@@ -121,11 +126,18 @@ def do_svd(input_paths, output_prefix,
     if not thesaurus:
         raise ValueError('Empty thesaurus %r', input_paths)
     mat, pos_tags, rows, cols = _filter_out_infrequent_entries(desired_counts_per_feature_type, thesaurus)
+    if apply_to:
+        vectors_to_apply_to = Thesaurus.from_tsv(apply_to, aggressive_lowercasing=False, vocabulary=set(cols))
+        extra_matrix, _, extra_rows = vectors_to_apply_to.to_sparse_matrix()
 
     for n_components in reduce_to:
         method, reduced_mat = _do_svd_single(mat, n_components)
         if not method:
             continue
+        if apply_to:
+            logging.info('Applying learned SVD transform to matrix of shape %r', extra_matrix.shape)
+            reduced_mat = np.vstack((reduced_mat, method.transform(extra_matrix)))
+            rows = list(rows) + [DocumentFeature.from_string(x) for x in extra_rows]
 
         path = '{}-SVD{}'.format(output_prefix, n_components)
         _write_to_disk(scipy.sparse.coo_matrix(reduced_mat), method, path, rows)
@@ -133,11 +145,12 @@ def do_svd(input_paths, output_prefix,
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO,
-                        format="%(asctime)s\t%(module)s.%(funcName)s ""(line %(lineno)d)\t%(levelname)s : %(""message)s")
+                        format="%(asctime)s\t%(module)s.%(funcName)s ""(line %(lineno)d)\t%(levelname)s : %(message)s")
 
     # in_paths = dump.giga_paths
     # out_prefixes = [path.split('.')[0] for path in in_paths]
-    # do_svd(in_paths, out_prefixes,
-    #        desired_counts_per_feature_type=[('N', 8000), ('V', 4000), ('J', 4000), ('RB', 200), ('AN', 20000),
-    #                                         ('NN', 20000)],
-    #        reduce_to=[30, 300, 1000])
+    # do_svd(['../FeatureExtractionToolkit/exp10-12/exp10.events.filtered.strings'], 'wtf',
+           # desired_counts_per_feature_type=[('N', 8000), ('V', 4000), ('J', 4000), ('RB', 200), ('AN', 20000),
+           #                                  ('NN', 20000)],
+           # reduce_to=[30, 300, 1000],
+           # apply_to=['../FeatureExtractionToolkit/exp10-12/exp10.events.filtered.strings'])

@@ -1,3 +1,4 @@
+from collections import Counter
 import os
 
 from operator import itemgetter
@@ -5,9 +6,8 @@ import pytest
 import numpy as np
 import scipy.sparse as sp
 
+from discoutils.reduce_dimensionality import _do_svd_single, _filter_out_infrequent_entries, do_svd
 from discoutils.thesaurus_loader import Thesaurus
-from discoutils.reduce_dimensionality import _do_svd_single, \
-    _filter_out_infrequent_entries, _write_to_disk
 from discoutils.tests.test_thesaurus import thesaurus_c
 
 
@@ -41,6 +41,20 @@ def test_do_svd_single_sparse(sparse_matrix):
     test_do_svd_single_dense(sparse_matrix)
 
 
+def test_application_after_learning(tmpdir):
+    tmpfile = tmpdir.join('tmp.thesaurus')
+    do_svd(['discoutils/tests/resources/exp0-0c.strings'],
+           tmpfile,
+           reduce_to=[2],
+           apply_to=['discoutils/tests/resources/exp0-0c.strings']
+    )
+    with open(str(tmpfile) + '-SVD2.events.filtered.strings') as infile:
+        entries = [line.split('\t')[0] for line in infile.readlines()]
+    c = Counter(entries)
+    assert len(c) == 5
+    assert all(x == 2 for x in c.values())
+
+
 @pytest.fixture(scope='module')
 def all_cols(thesaurus_c):
     _, cols, _ = thesaurus_c.to_sparse_matrix()
@@ -51,10 +65,10 @@ def all_cols(thesaurus_c):
 @pytest.mark.parametrize(
     ('feature_type_limits', 'expected_shape', 'missing_columns'),
     (
-        ([('N', 2), ('V', 2), ('J', 2), ('AN', 2)], (5, 5), []), # nothing removed
-        ([('N', 1), ('V', 2), ('J', 2), ('AN', 2)], (4, 5), []), # just row a/N should drop out
-        ([('N', 0), ('V', 2), ('J', 2), ('AN', 2)], (3, 4), ['x/X']), # rows a and g, column x should drop out
-        ([('V', 1)], (1, 3), ['b/V', 'x/X']), # just the one verb should remain, with its three features
+            ([('N', 2), ('V', 2), ('J', 2), ('AN', 2)], (5, 5), []),  # nothing removed
+            ([('N', 1), ('V', 2), ('J', 2), ('AN', 2)], (4, 5), []),  # just row a/N should drop out
+            ([('N', 0), ('V', 2), ('J', 2), ('AN', 2)], (3, 4), ['x/X']),  # rows a and g, column x should drop out
+            ([('V', 1)], (1, 3), ['b/V', 'x/X']),  # just the one verb should remain, with its three features
     ),
 )
 def test_filter_out_infrequent_entries(thesaurus_c, all_cols, feature_type_limits, expected_shape, missing_columns):
