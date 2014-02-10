@@ -2,8 +2,8 @@ become/V	cop-HEAD:tribunal/N
 full-time/J	amod-HEAD:tribunal/N
 tribunal/N	amod-DEP:full-time/J	nsubj-DEP:it/PRON	det-DEP:a/DET	cop-DEP:become/V	prep-DEP:in/CONJ	punct-DEP:./PUNCT
 ordinary/J	amod-HEAD:session/N
-council/N	nn-HEAD:session/N
+council/N	nn-HEAD:session/N     T:something/N
 session/N	amod-DEP:ordinary/J	det-DEP:a/DET	nn-DEP:council/N	pobj-HEAD:through/CONJ
-cat/N	amod-DEP:large/J	amod-DEP:fluffy/J	nn-DEP:house/N	nn-DEP:street/N
-activist/N      amod-DEP:troubled/J     amod-DEP:leftw/V        T:with/CONJ     T:life/N        T:,/PUNCT       T:''/UNK        T:the/DET       T:troubled/J
+cat/N	amod-DEP:large/J	amod-DEP:fluffy/J	nn-DEP:house/N	nn-DEP:street/N     T:large/J
+activist/N      amod-DEP:troubled/J     amod-DEP:leftw/J        T:what/CONJ     T:ever/N       T:feature/J
 eat/V      T:with/CONJ     T:life/N        amod-DEP:troubled/J
