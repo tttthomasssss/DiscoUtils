@@ -28,6 +28,7 @@ def test_loading_bigram_thesaurus(thesaurus_c):
     assert 'a/J_b/N' in thesaurus_c.keys()
     assert 'messed_up' not in thesaurus_c.keys()
 
+
 # todo check this
 def _assert_matrix_of_thesaurus_c_is_as_expected(matrix, rows, cols):
     # rows may come in any order
@@ -36,11 +37,11 @@ def _assert_matrix_of_thesaurus_c_is_as_expected(matrix, rows, cols):
     assert cols == ['a/N', 'b/V', 'd/J', 'g/N', 'x/X']
     # test the vectors for each entry
     expected_matrix = np.array([
-        [0.1, 0., 0.2, 0.8, 0.], # ab
-        [0., 0.1, 0.5, 0.3, 0.], # a
-        [0.1, 0., 0.3, 0.6, 0.], # b
-        [0.5, 0.3, 0., 0.7, 0.], # d
-        [0.3, 0.6, 0.7, 0., 0.9] # g
+        [0.1, 0., 0.2, 0.8, 0.],  # ab
+        [0., 0.1, 0.5, 0.3, 0.],  # a
+        [0.1, 0., 0.3, 0.6, 0.],  # b
+        [0.5, 0.3, 0., 0.7, 0.],  # d
+        [0.3, 0.6, 0.7, 0., 0.9]  # g
     ])
     # put the rows in the matrix in the order in which they are in expected_matrix
     matrix_ordered_by_rows = matrix[np.argsort(np.array(rows)), :]
@@ -112,6 +113,30 @@ def test_to_dissect_sparse_files(thesaurus_c, tmpdir):
     _assert_matrix_of_thesaurus_c_is_as_expected(exp_matrix.A, exp_rows, exp_cols)
 
 
+def test_load_with_predefined_vocabulary():
+    # test if constraining the vocabulary a bit correctly drops columns
+    t = Thesaurus.from_tsv(thesaurus_files=['discoutils/tests/resources/exp0-0c.strings'],
+                           vocabulary={'a/N', 'b/V', 'd/J', 'g/N'})
+    expected_matrix = np.array([
+        [0.1, 0., 0.2, 0.8],  # ab
+        [0., 0.1, 0.5, 0.3],  # a
+        [0.1, 0., 0.3, 0.6],  # b
+        [0.5, 0.3, 0., 0.7],  # d
+        [0.3, 0.6, 0.7, 0.]  # g
+    ])
+    mat, cols, rows = t.to_sparse_matrix()
+    assert set(cols) == {'a/N', 'b/V', 'd/J', 'g/N'}
+    assert mat.shape == (5, 4)
+    np.testing.assert_array_equal(expected_matrix.sum(axis=0)[np.newaxis], mat.sum(axis=0))
+
+    # test if severely constraining the vocabulary a bit correctly drops columns AND rows
+    t = Thesaurus.from_tsv(thesaurus_files=['discoutils/tests/resources/exp0-0c.strings'],
+                           vocabulary={'x/X'})
+    mat, cols, rows = t.to_sparse_matrix()
+    assert set(cols) == {'x/X'}
+    assert mat.A == np.array([0.9])
+
+
 class TestLoad_thesauri(TestCase):
     def setUp(self):
         """
@@ -154,7 +179,7 @@ class TestLoad_thesauri(TestCase):
         filename = 'thesaurus_unit_tests.tmp'
         self.thesaurus.to_shelf(filename)
 
-        d = shelve.open(filename, flag='r') # read only
+        d = shelve.open(filename, flag='r')  # read only
         from_shelf = Thesaurus(d)
         for k, v in self.thesaurus.iteritems():
             self.assertEqual(self.thesaurus[k], from_shelf[k])

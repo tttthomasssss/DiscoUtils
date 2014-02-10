@@ -12,6 +12,15 @@ def test_find_all_NPs():
                "AN:large/J_cat/N\n" \
                "AN:fluffy/J_cat/N\n" \
                "NN:house/N_cat/N\n" \
-               "NN:street/N_cat/N\n"
+               "NN:street/N_cat/N\n" \
+               "AN:troubled/J_activist/N\n"
+    print '\n', s.getvalue()
+    assert s.getvalue() == expected
+
+
+def test_find_all_NPs_with_seed():
+    s = StringIO()
+    go('discoutils/tests/resources/exp10head.pbfiltered', s, seed_set={'ordinary/J'})
+    expected = "AN:ordinary/J_session/N\n"
     print '\n', s.getvalue()
     assert s.getvalue() == expected

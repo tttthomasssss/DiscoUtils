@@ -145,6 +145,3 @@ class Token(object):
 
     def __hash__(self):
         return hash((self.text, self.pos, self.ner))
-
-import doctest
-doctest.testmod(verbose=True)

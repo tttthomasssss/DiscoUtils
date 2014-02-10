@@ -2,12 +2,11 @@
 from collections import Counter
 import logging
 import shelve
-
 import numpy
 from discoutils.tokens import DocumentFeature
-
 from discoutils.collections_utils import walk_nonoverlapping_pairs
 from discoutils.io_utils import write_vectors_to_disk
+from discoutils.misc import ContainsEverything
 
 
 class Thesaurus(object):
@@ -48,7 +47,7 @@ class Thesaurus(object):
 
     @classmethod
     def from_tsv(cls, thesaurus_files='', sim_threshold=0, include_self=False,
-                 aggressive_lowercasing=True, ngram_separator='_'):
+                 aggressive_lowercasing=True, ngram_separator='_', vocabulary=ContainsEverything()):
         """
         Create a Thesaurus by parsing a Byblo-compatible TSV files (events or sims).
         If duplicate values are encoutered during parsing, only the latest will be kept.
@@ -65,16 +64,19 @@ class Thesaurus(object):
             will take place. This might be desirable when readings feature lists
         :type aggressive_lowercasing: bool
         :param ngram_separator: When n_gram entries are read in, what are the indidivual tokens separated by
+        :param vocabulary: a set of strings. Features not contained in this set will be discarded.
         """
         return cls._read_from_disk(thesaurus_files,
                                    sim_threshold,
                                    include_self,
                                    ngram_separator,
-                                   aggressive_lowercasing)
+                                   aggressive_lowercasing,
+                                   vocabulary)
 
 
     @classmethod
-    def _read_from_disk(cls, thesaurus_files, sim_threshold, include_self, ngram_separator, aggressive_lowercasing):
+    def _read_from_disk(cls, thesaurus_files, sim_threshold, include_self, ngram_separator,
+                        aggressive_lowercasing, vocabulary):
         """
         Loads a set Byblo-generated thesaurus form the specified file and
         returns their union. If any of the files has been parsed already a
@@ -104,14 +106,14 @@ class Thesaurus(object):
                 for line in infile:
                     tokens = line.strip().split('\t')
                     if len(tokens) % 2 == 0:
-                    # must have an odd number of things, one for the entry
-                    # and pairs for (neighbour, similarity)
+                        # must have an odd number of things, one for the entry
+                        # and pairs for (neighbour, similarity)
                         logging.warn('Dodgy line in thesaurus file: %s\n %s', path, line)
                         continue
                     if tokens[0] != FILTERED:
                         to_insert = [(_smart_lower(word, ngram_separator, aggressive_lowercasing), float(sim))
                                      for (word, sim) in walk_nonoverlapping_pairs(tokens, 1)
-                                     if word.lower() != FILTERED and float(sim) > sim_threshold]
+                                     if word.lower() != FILTERED and word in vocabulary and float(sim) > sim_threshold]
                         if include_self:
                             to_insert.insert(0, (_smart_lower(tokens[0],
                                                               ngram_separator,
@@ -144,7 +146,7 @@ class Thesaurus(object):
         Uses the shelf module to persist this object to a file
         """
         logging.info('Shelving thesaurus of size %d to %s', len(self), filename)
-        d = shelve.open(filename, flag='c') # read and write
+        d = shelve.open(filename, flag='c')  # read and write
         for entry, features in self.iteritems():
             d[str(entry)] = features
         d.close()
