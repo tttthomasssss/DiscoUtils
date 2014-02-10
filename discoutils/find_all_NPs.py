@@ -2,7 +2,7 @@ import argparse
 import re
 import logging
 
-__author__ = 'miroslavbatchkarov'
+from misc import ContainsEverything
 
 '''
 Finds all adjective-noun and noun-noun compounds in a FET output file.
@@ -10,13 +10,6 @@ Optionally accepts only these ANs/NNs whose modifier is mentioned in a file.
 Requires features to have an associated PoS tag, see
 discoutils/tests/resources/exp10head.pbfiltered
 '''
-
-
-class ContainsEverything(object):
-    def __contains__(self, item):
-        return True
-
-
 
 noun_pattern = re.compile('^(\S+?/N).+')  # a noun, non-greedy
 an_pattern = re.compile('amod-DEP:(\S+?/J)')  # an adjective in an amod relation, consisting of non-whitespace
