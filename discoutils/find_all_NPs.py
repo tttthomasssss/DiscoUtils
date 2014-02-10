@@ -24,12 +24,12 @@ nn_head_feature_pattern = re.compile('nn-HEAD:(\S+/N)')  # an noun head in a nn 
 window_feature_pattern = re.compile('(T:\S+)')  # an noun in a nn relation
 
 
-def _find_and_output_features(head, line, modifier, np_type, outstream, modifier_set):
-    if np_type and head and modifier:
+def _find_and_output_features(second, line, first, np_type, outstream, modifier_set):
+    if np_type and second and first:
         # if we've found en entry having the right PoS and dep features, get its window features
         features = window_feature_pattern.findall(line)
-        if features and modifier in modifier_set:
-            outstream.write('{}:{}_{}\t{}\n'.format(np_type, modifier, head, '\t'.join(features)))
+        if features and first in modifier_set:
+            outstream.write('{}_{}\t{}\n'.format(first, second, '\t'.join(features)))
 
 
 def go_get_vectors(infile, outstream, seed_set=ContainsEverything()):
@@ -38,7 +38,7 @@ def go_get_vectors(infile, outstream, seed_set=ContainsEverything()):
             if i % 100000 == 0:
                 logging.info('Done %d lines', i)
 
-            np_type, head, modifier = None, None, None
+            np_type, second, first = None, None, None
             # check if the entry is an adj or a noun
             nouns = noun_pattern.findall(line)
             adjectives = adj_pattern.findall(line)
@@ -47,33 +47,37 @@ def go_get_vectors(infile, outstream, seed_set=ContainsEverything()):
             nn_heads = nn_head_feature_pattern.findall(line)
             nn_modifiers = nn_modifier_feature_pattern.findall(line)
 
+            if nouns:
+                assert 1== len(nouns) # no more than 1 entry per line
+            if adjectives:
+                assert 1== len(adjectives) # no more than 1 entry per line
             if adjectives and amod_modifiers:
                 # logging.warn('Adjective has adjectival modifiers')
                 continue
 
             if adjectives and amod_heads:
-                modifier = adjectives[0]
-                head = amod_heads[0]
+                first = adjectives[0]
+                second = amod_heads[0]
                 np_type = 'AN'
-                _find_and_output_features(head, line, modifier, np_type, outstream, seed_set)
+                _find_and_output_features(second, line, first, np_type, outstream, seed_set)
 
             if nouns and amod_modifiers:
-                head = nouns[0]
+                second = nouns[0]
                 np_type = 'AN'
-                for modifier in an_modifier_feature_pattern.findall(line):
-                    _find_and_output_features(head, line, modifier, np_type, outstream, seed_set)
+                for first in an_modifier_feature_pattern.findall(line):
+                    _find_and_output_features(second, line, first, np_type, outstream, seed_set)
 
             if nouns and nn_heads:
                 np_type = 'NN'
-                head = nouns[0]
-                modifier = nn_heads[0]
-                _find_and_output_features(head, line, modifier, np_type, outstream, seed_set)
+                first = nouns[0]
+                second = nn_heads[0]
+                _find_and_output_features(second, line, first, np_type, outstream, seed_set)
 
             if nouns and nn_modifiers:
                 np_type = 'NN'
-                head = nn_modifiers[0]
-                for modifier in nn_modifier_feature_pattern.findall(line):
-                    _find_and_output_features(head, line, modifier, np_type, outstream, seed_set)
+                second = nouns[0]
+                for first in nn_modifier_feature_pattern.findall(line):
+                    _find_and_output_features(second, line, first, np_type, outstream, seed_set)
 
 
 def go_get_NPs(infile, outstream, seed_set=ContainsEverything()):
@@ -85,11 +89,10 @@ def go_get_NPs(infile, outstream, seed_set=ContainsEverything()):
             noun_match = noun_pattern.match(line)
             if noun_match:
                 head = noun_match.groups()[0]
-                for np_type, pattern in zip(['AN', 'NN'],
-                                            [an_modifier_feature_pattern, nn_modifier_feature_pattern]):
+                for pattern in [an_modifier_feature_pattern, nn_modifier_feature_pattern]:
                     for modifier in pattern.findall(line):
                         if modifier in seed_set:
-                            outstream.write('{}:{}_{}\n'.format(np_type, modifier, head))
+                            outstream.write('{}_{}\n'.format(modifier, head))
 
 
 def read_configuration():
