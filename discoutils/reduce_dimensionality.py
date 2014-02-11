@@ -138,6 +138,9 @@ def do_svd(input_paths,
         # make sure the shape is right
         assert extra_matrix.shape[1] == mat.shape[1]
 
+        # also extend the list of names
+        rows = list(rows) + [DocumentFeature.from_string(x) for x in extra_rows]
+
     for n_components in reduce_to:
         method, reduced_mat = _do_svd_single(mat, n_components)
         if not method:
@@ -146,8 +149,6 @@ def do_svd(input_paths,
             logging.info('Applying learned SVD transform to matrix of shape %r', extra_matrix.shape)
             # apply learned transform to new data and append to old data
             reduced_mat = np.vstack((reduced_mat, method.transform(extra_matrix)))
-            # also extend the list of names
-            rows = list(rows) + [DocumentFeature.from_string(x) for x in extra_rows]
 
         path = '{}-SVD{}'.format(output_prefix, n_components)
         _write_to_disk(scipy.sparse.coo_matrix(reduced_mat), method, path, rows)
