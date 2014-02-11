@@ -62,7 +62,8 @@ def _filter_out_infrequent_entries(desired_counts_per_feature_type, thesaurus):
     # already filtered out infrequent features, so the column count will stay roughly the same
     desired_cols = np.ravel(mat.sum(0)) > 0
     mat = mat[:, desired_cols]
-    cols = np.array(cols)[desired_cols]
+    col_indices = list(np.where(desired_cols)[0])
+    cols = itemgetter(*col_indices)(cols)
     logging.info('Selected only the most frequent entries, matrix size is now %r', mat.shape)
     return mat, pos_tags, rows, cols
 
@@ -132,6 +133,7 @@ def do_svd(input_paths,
         extra_rows = [x for x in thes_to_apply_to.keys()]
         # vectorize second matrix with the vocabulary (columns) of the first thesaurus to ensure shapes match
         # "project" second thesaurus into space of first thesaurus
+        thesaurus.v.vocabulary_ = {x: i for i, x in enumerate(list(cols))}
         extra_matrix = thesaurus.v.transform([dict(fv) for fv in thes_to_apply_to.itervalues()])
         # make sure the shape is right
         assert extra_matrix.shape[1] == mat.shape[1]
