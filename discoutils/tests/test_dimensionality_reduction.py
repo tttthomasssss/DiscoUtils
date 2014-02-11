@@ -41,18 +41,33 @@ def test_do_svd_single_sparse(sparse_matrix):
     test_do_svd_single_dense(sparse_matrix)
 
 
-def test_application_after_learning(tmpdir):
+@pytest.mark.parametrize(
+    ('first', 'second', 'exp_row_len'),
+    (
+            ('c', 'c', 5),  # easy case, vocabulary matches
+            ('b', 'b', 4),  # easy case, vocabulary matches
+            ('b', 'c', 7),  # unseen features introduced
+            ('c', 'b', 7),  # some seen features missing
+    ),
+)
+def test_application_after_learning(tmpdir, first, second, exp_row_len):
+    """
+    Test of applying a learn SVD to another matrix works. We are mostly interested if
+    matrix dimensions match- no exception should be raised. Other than that,
+    this is a useless test
+    """
     tmpfile = tmpdir.join('tmp.thesaurus')
-    do_svd(['discoutils/tests/resources/exp0-0c.strings'],
+    do_svd(['discoutils/tests/resources/exp0-0%s.strings' % first],
            tmpfile,
-           reduce_to=[2],
-           apply_to=['discoutils/tests/resources/exp0-0c.strings']
-    )
-    with open(str(tmpfile) + '-SVD2.events.filtered.strings') as infile:
-        entries = [line.split('\t')[0] for line in infile.readlines()]
-    c = Counter(entries)
-    assert len(c) == 5
-    assert all(x == 2 for x in c.values())
+           reduce_to=[2],  # some small number, not what we are testing for here
+           apply_to=['discoutils/tests/resources/exp0-0%s.strings' % second])
+
+    # when made into a thesaurus, the reduced matrix will have some duplicates
+    # these will be summed out, leaving us with a matrix of a specific size
+    t = Thesaurus.from_tsv([str(tmpfile) + '-SVD2.events.filtered.strings'],
+                           aggressive_lowercasing=False)
+    mat, cols, rows = t.to_sparse_matrix()
+    assert mat.shape == (exp_row_len, 2)
 
 
 @pytest.fixture(scope='module')

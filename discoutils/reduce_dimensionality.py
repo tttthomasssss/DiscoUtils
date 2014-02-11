@@ -5,13 +5,13 @@ sys.path.append('..')
 sys.path.append('../..')
 
 import logging
+import scipy, time
+import numpy as np
 from operator import itemgetter
 from sklearn.decomposition import TruncatedSVD
 from discoutils.tokens import DocumentFeature
 from discoutils.thesaurus_loader import Thesaurus
-import scipy, time
 from discoutils.io_utils import write_vectors_to_disk
-import numpy as np
 
 try:
     import cPickle as pickle
@@ -127,8 +127,14 @@ def do_svd(input_paths,
         raise ValueError('Empty thesaurus %r', input_paths)
     mat, pos_tags, rows, cols = _filter_out_infrequent_entries(desired_counts_per_feature_type, thesaurus)
     if apply_to:
-        vectors_to_apply_to = Thesaurus.from_tsv(apply_to, aggressive_lowercasing=False, vocabulary=set(cols))
-        extra_matrix, _, extra_rows = vectors_to_apply_to.to_sparse_matrix()
+        thes_to_apply_to = Thesaurus.from_tsv(apply_to, aggressive_lowercasing=False, vocabulary=set(cols))
+        # get the names of each thesaurus entry
+        extra_rows = [x for x in thes_to_apply_to.keys()]
+        # vectorize second matrix with the vocabulary (columns) of the first thesaurus to ensure shapes match
+        # "project" second thesaurus into space of first thesaurus
+        extra_matrix = thesaurus.v.transform([dict(fv) for fv in thes_to_apply_to.itervalues()])
+        # make sure the shape is right
+        assert extra_matrix.shape[1] == mat.shape[1]
 
     for n_components in reduce_to:
         method, reduced_mat = _do_svd_single(mat, n_components)
@@ -136,7 +142,9 @@ def do_svd(input_paths,
             continue
         if apply_to:
             logging.info('Applying learned SVD transform to matrix of shape %r', extra_matrix.shape)
+            # apply learned transform to new data and append to old data
             reduced_mat = np.vstack((reduced_mat, method.transform(extra_matrix)))
+            # also extend the list of names
             rows = list(rows) + [DocumentFeature.from_string(x) for x in extra_rows]
 
         path = '{}-SVD{}'.format(output_prefix, n_components)
@@ -150,7 +158,7 @@ if __name__ == '__main__':
     # in_paths = dump.giga_paths
     # out_prefixes = [path.split('.')[0] for path in in_paths]
     # do_svd(['../FeatureExtractionToolkit/exp10-12/exp10.events.filtered.strings'], 'wtf',
-           # desired_counts_per_feature_type=[('N', 8000), ('V', 4000), ('J', 4000), ('RB', 200), ('AN', 20000),
-           #                                  ('NN', 20000)],
-           # reduce_to=[30, 300, 1000],
-           # apply_to=['../FeatureExtractionToolkit/exp10-12/exp10.events.filtered.strings'])
+    # desired_counts_per_feature_type=[('N', 8000), ('V', 4000), ('J', 4000), ('RB', 200), ('AN', 20000),
+    #                                  ('NN', 20000)],
+    # reduce_to=[30, 300, 1000],
+    # apply_to=['../FeatureExtractionToolkit/exp10-12/exp10.events.filtered.strings'])
