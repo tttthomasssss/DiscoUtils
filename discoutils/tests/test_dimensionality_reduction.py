@@ -44,10 +44,10 @@ def test_do_svd_single_sparse(sparse_matrix):
 @pytest.mark.parametrize(
     ('first', 'second', 'exp_row_len'),
     (
-            ('c', 'c', 5),  # easy case, vocabulary matches
-            ('b', 'b', 4),  # easy case, vocabulary matches
-            ('b', 'c', 7),  # unseen features introduced
-            ('c', 'b', 7),  # some seen features missing
+        ('c', 'c', 5), # easy case, vocabulary matches
+        ('b', 'b', 4), # easy case, vocabulary matches
+        ('b', 'c', 7), # unseen features introduced. The union of the 2 thesauri has 7 valid entries
+        ('c', 'b', 7),  # some seen features missing
     ),
 )
 def test_application_after_learning(tmpdir, first, second, exp_row_len):
@@ -59,7 +59,7 @@ def test_application_after_learning(tmpdir, first, second, exp_row_len):
     tmpfile = tmpdir.join('tmp.thesaurus')
     do_svd(['discoutils/tests/resources/exp0-0%s.strings' % first],
            tmpfile,
-           reduce_to=[2],  # some small number, not what we are testing for here
+           reduce_to=[2], # some small number, not what we are testing for here
            apply_to=['discoutils/tests/resources/exp0-0%s.strings' % second])
 
     # when made into a thesaurus, the reduced matrix will have some duplicates
@@ -68,6 +68,24 @@ def test_application_after_learning(tmpdir, first, second, exp_row_len):
                            aggressive_lowercasing=False)
     mat, cols, rows = t.to_sparse_matrix()
     assert mat.shape == (exp_row_len, 2)
+
+
+def test_application_after_learning_with_selective_write(tmpdir):
+    """
+    Test if when SVD is trained on matrix A and applied to matrix B, and
+    it is requested that just the reduced version of only A or B is output,
+    the shape of the output is right
+    """
+    tmpfile = tmpdir.join('tmp.thesaurus')
+    for w, exp_row_len in zip([1, 2, 3], [4, 5, 7]):
+        do_svd(['discoutils/tests/resources/exp0-0b.strings'],
+               tmpfile,
+               reduce_to=[2], # some small number, not what we are testing for here
+               apply_to=['discoutils/tests/resources/exp0-0c.strings'],
+               write=w)
+        t = Thesaurus.from_tsv([str(tmpfile) + '-SVD2.events.filtered.strings'], aggressive_lowercasing=False)
+        mat, _, _ = t.to_sparse_matrix()
+        assert mat.shape == (exp_row_len, 2)
 
 
 @pytest.fixture(scope='module')
@@ -80,10 +98,10 @@ def all_cols(thesaurus_c):
 @pytest.mark.parametrize(
     ('feature_type_limits', 'expected_shape', 'missing_columns'),
     (
-            ([('N', 2), ('V', 2), ('J', 2), ('AN', 2)], (5, 5), []),  # nothing removed
-            ([('N', 1), ('V', 2), ('J', 2), ('AN', 2)], (4, 5), []),  # just row a/N should drop out
-            ([('N', 0), ('V', 2), ('J', 2), ('AN', 2)], (3, 4), ['x/X']),  # rows a and g, column x should drop out
-            ([('V', 1)], (1, 3), ['b/V', 'x/X']),  # just the one verb should remain, with its three features
+        ([('N', 2), ('V', 2), ('J', 2), ('AN', 2)], (5, 5), []), # nothing removed
+        ([('N', 1), ('V', 2), ('J', 2), ('AN', 2)], (4, 5), []), # just row a/N should drop out
+        ([('N', 0), ('V', 2), ('J', 2), ('AN', 2)], (3, 4), ['x/X']), # rows a and g, column x should drop out
+        ([('V', 1)], (1, 3), ['b/V', 'x/X']),  # just the one verb should remain, with its three features
     ),
 )
 def test_filter_out_infrequent_entries(thesaurus_c, all_cols, feature_type_limits, expected_shape, missing_columns):
@@ -98,37 +116,3 @@ def _read_and_strip_lines(input_file):
     lines = map(str.strip, lines)
     lines = [x for x in lines if x]
     return lines
-
-
-# def test_write_to_file(tmpdir, thesaurus_c):
-#     '''
-#     Test writing thesauri containing one feature type in separate directories
-#     '''
-#     type_limits = sorted([('AN', 1), ('J', 1), ('N', 2), ('V', 1), ], key=itemgetter(0))
-#     matrix, pos_tags, rows, cols = _filter_out_infrequent_entries(
-#         type_limits,
-#         thesaurus_c)
-#
-#     pos_per_output_dir = sorted(list(set(pos_tags)))
-#     output_prefixes = [str(tmpdir.join('%s.out' % x)) for x in pos_per_output_dir]
-#
-#     for (type, max_count), prefix in zip(type_limits, output_prefixes):
-#         _write_to_disk(sp.coo_matrix(matrix), None, prefix, rows)
-#         events_file = '%s.events.filtered.strings' % prefix
-#         assert os.path.exists(events_file)
-#
-#         #check number of entries matches
-#         t1 = Thesaurus.from_tsv([events_file])
-#         assert len(t1) == max_count
-#
-#         # check if the entries file has the right number of entries
-#         entries_file = '%s.entries.filtered.strings' % prefix
-#         assert os.path.exists(entries_file)
-#         assert len(_read_and_strip_lines(entries_file)) == len(t1)
-#
-#         # check if the fetures file has the right number of features
-#         features_file = '%s.features.filtered.strings' % prefix
-#         assert os.path.exists(features_file)
-#         lines = _read_and_strip_lines(features_file)
-#         assert len(lines) <= matrix.shape[1] # some features might drop out because of 0 values, but in
-#         # any case there cannot be more features than dimensions in the matrix

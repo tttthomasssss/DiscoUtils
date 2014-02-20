@@ -100,11 +100,9 @@ def _write_to_disk(reduced_mat, method, prefix, rows):
     #    pickle.dump(method, outfile)
 
 
-def do_svd(input_paths,
-           output_prefix,
+def do_svd(input_paths, output_prefix,
            desired_counts_per_feature_type=[('N', 8), ('V', 4), ('J', 4), ('RB', 2), ('AN', 2)],
-           reduce_to=[3, 10, 15],
-           apply_to=[]):
+           reduce_to=[3, 10, 15], apply_to=[], write=3):
     """
 
     Performs truncated SVD. A copy of the trained sklearn SVD estimator will be also be saved
@@ -119,9 +117,13 @@ def do_svd(input_paths,
     :param reduce_to: list of integers, what dimensionalities to reduce to
     :param apply_to: list of file paths. After SVD has been trained on input_paths, it can be applied to
     apply_to. Output will be writen to the same file
-
+    :param write: Once SVD is trained on A and applied to B, output either A, B or vstack(A, B). Use values 0,
+    1, and 2 respectively. Default is 3.
+    :type write: int
     :raise ValueError: If the loaded thesaurus is empty
     """
+    if not 1 <= write <= 3:
+        raise ValueError('value of parameter write must be 1, 2 or 3')
 
     thesaurus = Thesaurus.from_tsv(input_paths, aggressive_lowercasing=False)
     if not thesaurus:
@@ -138,8 +140,12 @@ def do_svd(input_paths,
         # make sure the shape is right
         assert extra_matrix.shape[1] == mat.shape[1]
 
-        # also extend the list of names
-        rows = list(rows) + [DocumentFeature.from_string(x) for x in extra_rows]
+        if write == 3:
+            # extend the list of names
+            rows = list(rows) + [DocumentFeature.from_string(x) for x in extra_rows]
+        elif write == 2:
+            rows = [DocumentFeature.from_string(x) for x in extra_rows]
+            # no need to do anything if write == 1
 
     for n_components in reduce_to:
         method, reduced_mat = _do_svd_single(mat, n_components)
@@ -147,8 +153,12 @@ def do_svd(input_paths,
             continue
         if apply_to:
             logging.info('Applying learned SVD transform to matrix of shape %r', extra_matrix.shape)
-            # apply learned transform to new data and append to old data
-            reduced_mat = np.vstack((reduced_mat, method.transform(extra_matrix)))
+            # apply learned transform to new data
+            if write == 3:
+                # append to old data
+                reduced_mat = np.vstack((reduced_mat, method.transform(extra_matrix)))
+            elif write == 2:
+                reduced_mat = method.transform(extra_matrix)
 
         path = '{}-SVD{}'.format(output_prefix, n_components)
         _write_to_disk(scipy.sparse.coo_matrix(reduced_mat), method, path, rows)
