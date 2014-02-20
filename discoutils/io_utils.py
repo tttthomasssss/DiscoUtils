@@ -19,10 +19,14 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
     :param features_path: where to write the Byblo features file
     :param entries_path: where to write the Byblo entries file
     :param vectors_path: where to write the Byblo events file
+    :type vectors_path: string of file-like. If it evaluates to True progress messages will be printed
     :param entry_filter: callable, called for each entry. Takes a single DocumentFeature parameter. Returns true
     if the entry has to be written and false if the entry has to be ignored. Defaults to True.
     """
     # todo unit test
+    if not any([vectors_path, features_path, entries_path]):
+        raise ValueError('At least one of vectors_path, features_path or entries_path required')
+
     if not isspmatrix_coo(matrix):
         logging.error('Expected a scipy.sparse.coo matrix, got %s', type(matrix))
         raise ValueError('Wrong matrix type')
@@ -30,39 +34,47 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
         logging.error('Matrix shape is wrong, expected %dx%s, got %r', len(row_index), len(column_index), matrix.shape)
         raise ValueError('Matrix shape does not match row_index/column_index size')
 
-    new_byblo_entries = {}
-    things = zip(matrix.row, matrix.col, matrix.data)
-    selected_rows = []
+    accepted_entry_counts = {}
+    matrix_data = zip(matrix.row, matrix.col, matrix.data)
+    accepted_rows = []
 
-    logging.info('Writing to %s', vectors_path)
-    with open(vectors_path, 'wb') as outfile:
-        for row_num, group in groupby(things, lambda x: x[0]):
-            entry = row_index[row_num]
-            if entry_filter(entry):
-                selected_rows.append(row_num)
-                ngrams_and_counts = [(column_index[x[1]], x[2]) for x in group]
-                outfile.write('%s\t%s\n' % (
-                    entry.tokens_as_str(),
-                    '\t'.join(map(str, chain.from_iterable(ngrams_and_counts)))
-                ))
-                new_byblo_entries[entry] = sum(x[1] for x in ngrams_and_counts)
-            if row_num % 1000 == 0:
-                logging.info('Processed %d vectors', row_num)
+    logging.info('Writing events to %s', vectors_path)
+    if isinstance(vectors_path, str) or isinstance(vectors_path, unicode):
+        outfile = open(vectors_path, 'wb')
+    elif hasattr(vectors_path, 'write'):
+        outfile = vectors_path
+    else:
+        raise ValueError('vectors_path: expected str or file-like, got %s' % type(vectors_path))
+
+    for row_num, column_ids_and_values in groupby(matrix_data, lambda x: x[0]):
+        entry = row_index[row_num]
+        if entry_filter(entry):
+            accepted_rows.append(row_num)
+            features_and_counts = [(column_index[x[1]], x[2]) for x in column_ids_and_values]
+
+            outfile.write('%s\t%s\n' % (
+                entry.tokens_as_str(),
+                '\t'.join(map(str, chain.from_iterable(features_and_counts)))
+            ))
+            accepted_entry_counts[entry] = sum(x[1] for x in features_and_counts)
+        if row_num % 1000 == 0 and outfile:
+            logging.info('Processed %d vectors', row_num)
+
+    outfile.close()
 
     if entries_path:
-        logging.info('Writing to %s', entries_path)
+        logging.info('Writing entries to %s', entries_path)
         with open(entries_path, 'w') as outfile:
-            for entry, count in new_byblo_entries.iteritems():
+            for entry, count in accepted_entry_counts.iteritems():
                 outfile.write('%s\t%f\n' % (entry.tokens_as_str(), count))
 
-    if features_path:
-        logging.info('Writing to %s', features_path)
+    if features_path and accepted_rows: # guard against empty files
+        logging.info('Writing features to %s', features_path)
         with open(features_path, 'w') as outfile:
-            if selected_rows: # guard against empty files
-                feature_sums = np.array(matrix.tocsr()[selected_rows].sum(axis=0))[0, :]
-                for feature, count in zip(column_index, feature_sums):
-                    if count > 0:
-                        outfile.write('%s\t%f\n' % (feature, count))
+            feature_sums = np.array(matrix.tocsr()[accepted_rows].sum(axis=0))[0, :]
+            for feature, count in zip(column_index, feature_sums):
+                if count > 0:
+                    outfile.write('%s\t%f\n' % (feature, count))
 
 
 def reformat_entries(filename, suffix, function, separator='\t'):
