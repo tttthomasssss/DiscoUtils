@@ -1,3 +1,4 @@
+import os
 import pytest
 import scipy.sparse as sp
 
@@ -55,8 +56,15 @@ def test_write_vectors_to_disk(resources, tmpdir):
                           events_file, features_file, entries_file,
                           entry_filter=filter_callable)
 
-    entries = [x.split('\t')[0] for x in _read_and_strip_lines(entries_file)]
-    features = [x.split('\t')[0] for x in _read_and_strip_lines(features_file)]
+    if expected_entries:
+        # the file will not be written at all if there's nothing to put in it
+        entries = [x.split('\t')[0] for x in _read_and_strip_lines(entries_file)]
+        assert set(entries) == set(expected_entries)
+    else:
+        assert not os.path.exists(entries_file)
 
-    assert set(entries) == set(expected_entries)
-    assert features == expected_features
+    if expected_features:
+        features = [x.split('\t')[0] for x in _read_and_strip_lines(features_file)]
+        assert features == expected_features
+    else:
+        assert not os.path.exists(features_file)

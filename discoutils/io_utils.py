@@ -16,14 +16,15 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
     :param row_index: sorted list of DocumentFeature-s representing entry names
     :type row_index: thesisgenerator.plugins.tokenizer.DocumentFeature
     :param column_index: sorted list of feature names
-    :param features_path: where to write the Byblo features file
-    :param entries_path: where to write the Byblo entries file
+    :param features_path: str, where to write the Byblo features file. If the entry_filter removes all entries
+    this file will not be written, i.e. the file will not be created at all if there's nothing to put in it
+    :param entries_path: str, where to write the Byblo entries file. If the entry_filter removes all entries
+    this file will not be written.
     :param vectors_path: where to write the Byblo events file
     :type vectors_path: string of file-like. If it evaluates to True progress messages will be printed
     :param entry_filter: callable, called for each entry. Takes a single DocumentFeature parameter. Returns true
     if the entry has to be written and false if the entry has to be ignored. Defaults to True.
     """
-    # todo unit test
     if not any([vectors_path, features_path, entries_path]):
         raise ValueError('At least one of vectors_path, features_path or entries_path required')
 
@@ -62,7 +63,7 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
 
     outfile.close()
 
-    if entries_path:
+    if entries_path and accepted_entry_counts:
         logging.info('Writing entries to %s', entries_path)
         with open(entries_path, 'w') as outfile:
             for entry, count in accepted_entry_counts.iteritems():
