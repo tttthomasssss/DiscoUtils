@@ -16,6 +16,6 @@ python -c "
 import re; 
 from discoutils.io_utils import reformat_entries, clean;
 for i in [10,11]:
-    observed_ngram_vectors_file = '/mnt/lustre/scratch/inf/mmb28/FeatureExtrationToolkit/observed_vectors/exp%d_AN_NNvectors' % i; 
+    observed_ngram_vectors_file = '/mnt/lustre/scratch/inf/mmb28/FeatureExtrationToolkit/observed_vectors/exp%d-12_AN_NNvectors' % i;
     reformat_entries(observed_ngram_vectors_file, '-cleaned', clean);
 "
