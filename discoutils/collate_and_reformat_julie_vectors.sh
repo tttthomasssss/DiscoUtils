@@ -6,16 +6,16 @@
 cd /mnt/lustre/scratch/inf/mmb28/thesisgenerator
 
 # put all files from the same source corpus together
-x=/mnt/lustre/scratch/inf/juliewe/Compounds/data/miro/observed_vectors/
-y=/mnt/lustre/scratch/inf/mmb28/FeatureExtrationToolkit/observed_vectors/
-cat $x/*wiki* > $y/exp11_AN_NNvectors
-cat $x/*giga* > $y/exp10_AN_NNvectors
+x=/mnt/lustre/scratch/inf/juliewe/Compounds/data/miro/composed_vectors/
+y=/mnt/lustre/scratch/inf/mmb28/FeatureExtractionToolkit/apdt_vectors/
+cat $x/*wiki* > $y/exp11-12_AN_NNvectors
+cat $x/*giga* > $y/exp10-12_AN_NNvectors
 
 # convert to underscore-separated
 python -c "
 import re; 
 from discoutils.io_utils import reformat_entries, clean;
 for i in [10,11]:
-    observed_ngram_vectors_file = '/mnt/lustre/scratch/inf/mmb28/FeatureExtrationToolkit/observed_vectors/exp%d-12_AN_NNvectors' % i;
+    observed_ngram_vectors_file = '/mnt/lustre/scratch/inf/mmb28/FeatureExtrationToolkit/apdt_vectors/exp%d-12_AN_NNvectors' % i;
     reformat_entries(observed_ngram_vectors_file, '-cleaned', clean);
 "
