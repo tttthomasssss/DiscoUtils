@@ -13,7 +13,6 @@ cat $x/*giga* > $y/exp10-12_AN_NNvectors
 
 # convert to underscore-separated
 python -c "
-import re; 
 from discoutils.io_utils import reformat_entries, clean;
 for i in [10,11]:
     observed_ngram_vectors_file = '/mnt/lustre/scratch/inf/mmb28/FeatureExtrationToolkit/apdt_vectors/exp%d-12_AN_NNvectors' % i;

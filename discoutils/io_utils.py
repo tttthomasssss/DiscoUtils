@@ -69,7 +69,7 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
             for entry, count in accepted_entry_counts.iteritems():
                 outfile.write('%s\t%f\n' % (entry.tokens_as_str(), count))
 
-    if features_path and accepted_rows: # guard against empty files
+    if features_path and accepted_rows:  # guard against empty files
         logging.info('Writing features to %s', features_path)
         with open(features_path, 'w') as outfile:
             feature_sums = np.array(matrix.tocsr()[accepted_rows].sum(axis=0))[0, :]
@@ -93,6 +93,9 @@ def reformat_entries(filename, suffix, function, separator='\t'):
     with open(filename) as infile, open(outname, 'w') as outfile:
         for line in infile:
             fields = line.split(separator)
+            if len(fields) < 2:
+                # some line may contain an entry but no features
+                continue
             fields[0] = function(fields[0])
             outfile.write(separator.join(fields))
     return outname
@@ -108,7 +111,7 @@ def clean(entry):
     """
     import re
 
-    pattern = re.compile('(.*):(.*):(.*)')
+    pattern = re.compile('(\S+):(\S+):(\S+)')
     a, relation, b = pattern.match(entry).groups()
     if relation == 'amod-HEAD':
         return '{}_{}'.format(a, b)
