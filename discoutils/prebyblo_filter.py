@@ -93,7 +93,7 @@ def read_configuration():
 
 
 def main():
-    parameters = read_configuration(sys.argv)
+    parameters = read_configuration()
     output = parameters.output if parameters.output else '%s.pbfiltered' % parameters.filename
     logging.info("Writing %s", output)
 
