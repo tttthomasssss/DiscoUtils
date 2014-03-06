@@ -24,12 +24,13 @@ nn_head_feature_pattern = re.compile('nn-HEAD:(\S+/N)')  # an noun head in a nn 
 window_feature_pattern = re.compile('(T:\S+)')  # an noun in a nn relation
 
 
-def _find_and_output_features(second, line, first, np_type, outstream, modifier_set):
+def _find_and_output_features(second, line, first, np_type, outstream, phrase_set):
     if np_type and second and first:
         # if we've found en entry having the right PoS and dep features, get its window features
         features = window_feature_pattern.findall(line)
-        if features and first in modifier_set:
-            outstream.write('{}_{}\t{}\n'.format(first, second, '\t'.join(features)))
+        phrase = '{}_{}'.format(first, second)
+        if features and phrase in phrase_set:
+            outstream.write('{}\t{}\n'.format(phrase, '\t'.join(features)))
 
 
 def go_get_vectors(infile, outstream, seed_set=ContainsEverything()):
@@ -48,9 +49,9 @@ def go_get_vectors(infile, outstream, seed_set=ContainsEverything()):
             nn_modifiers = nn_modifier_feature_pattern.findall(line)
 
             if nouns:
-                assert 1== len(nouns) # no more than 1 entry per line
+                assert 1 == len(nouns)  # no more than 1 entry per line
             if adjectives:
-                assert 1== len(adjectives) # no more than 1 entry per line
+                assert 1 == len(adjectives)  # no more than 1 entry per line
             if adjectives and amod_modifiers:
                 # logging.warn('Adjective has adjectival modifiers')
                 continue
@@ -91,8 +92,9 @@ def go_get_NPs(infile, outstream, seed_set=ContainsEverything()):
                 head = noun_match.groups()[0]
                 for pattern in [an_modifier_feature_pattern, nn_modifier_feature_pattern]:
                     for modifier in pattern.findall(line):
-                        if modifier in seed_set:
-                            outstream.write('{}_{}\n'.format(modifier, head))
+                        phrase = '{}_{}'.format(modifier, head)
+                        if phrase in seed_set:
+                            outstream.write('%s\n' % phrase)
 
 
 def read_configuration():
@@ -101,8 +103,8 @@ def read_configuration():
     parser.add_argument('-o', '--output', required=False, type=str, default=None,
                         help='Name of output file. Default <input file>.ANsNNs')
     parser.add_argument('-s', '--modifier_set', required=False, type=str, default='',
-                        help='Name of file containing a set of modifiers that will be considered. '
-                             'All other ANs/NNs are disregarded.')
+                        help='Name of file containing a set of phrases that will be considered. '
+                             'All other NPs are disregarded.')
     parser.add_argument('-v', '--vectors', action='store_true',
                         help='If set, will also output '
                              'window features for each entry occurrence .Default is False')

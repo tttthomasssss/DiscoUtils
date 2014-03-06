@@ -22,7 +22,7 @@ def test_find_all_NPs():
 
 def test_find_all_NPs_with_seed():
     s = StringIO()
-    go_get_NPs('discoutils/tests/resources/exp10head.pbfiltered', s, seed_set={'ordinary/J'})
+    go_get_NPs('discoutils/tests/resources/exp10head.pbfiltered', s, seed_set={'ordinary/J_session/N'})
     expected = "ordinary/J_session/N\n"
     assert s.getvalue() == expected
 
