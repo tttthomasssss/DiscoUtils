@@ -58,7 +58,7 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
                 '\t'.join(map(str, chain.from_iterable(features_and_counts)))
             ))
             accepted_entry_counts[entry] = sum(x[1] for x in features_and_counts)
-        if row_num % 1000 == 0 and outfile:
+        if row_num % 5000 == 0 and outfile:
             logging.info('Processed %d vectors', row_num)
 
     outfile.close()
