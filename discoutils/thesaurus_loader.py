@@ -47,14 +47,15 @@ class Thesaurus(object):
 
     @classmethod
     def from_tsv(cls, thesaurus_files='', sim_threshold=0, include_self=False,
-                 aggressive_lowercasing=True, ngram_separator='_', vocabulary=ContainsEverything()):
+                 aggressive_lowercasing=True, ngram_separator='_', vocabulary=ContainsEverything(),
+                 allow_lexical_overlap=True):
         """
         Create a Thesaurus by parsing a Byblo-compatible TSV files (events or sims).
         If duplicate values are encoutered during parsing, only the latest will be kept.
 
         :param thesaurus_files: list or tuple of file paths to parse
         :type thesaurus_files: list
-        :param sim_threshold: min count for inclusion in this objecy
+        :param sim_threshold: min count for inclusion in this object
         :type sim_threshold: float
         :param include_self: whether to include self as nearest neighbour. Only applicable when holding
          similarities and not vectors
@@ -65,18 +66,16 @@ class Thesaurus(object):
         :type aggressive_lowercasing: bool
         :param ngram_separator: When n_gram entries are read in, what are the indidivual tokens separated by
         :param vocabulary: a set of strings. Features not contained in this set will be discarded.
+        :param allow_lexical_overlap: whether neighbours/features are allowed to overlap lexically with the entry
+        they are neighbours/features of
         """
-        return cls._read_from_disk(thesaurus_files,
-                                   sim_threshold,
-                                   include_self,
-                                   ngram_separator,
-                                   aggressive_lowercasing,
-                                   vocabulary)
+        return cls._read_from_disk(thesaurus_files, sim_threshold, include_self, ngram_separator,
+                                   aggressive_lowercasing, vocabulary, allow_lexical_overlap)
 
 
     @classmethod
     def _read_from_disk(cls, thesaurus_files, sim_threshold, include_self, ngram_separator,
-                        aggressive_lowercasing, vocabulary):
+                        aggressive_lowercasing, vocabulary, allow_lexical_overlap):
         """
         Loads a set Byblo-generated thesaurus form the specified file and
         returns their union. If any of the files has been parsed already a
@@ -100,6 +99,8 @@ class Thesaurus(object):
         to_return = dict()
         for path in thesaurus_files:
             logging.info('Loading thesaurus %s from disk', path)
+            if not allow_lexical_overlap:
+                logging.warn('DISALLOWING LEXICAL OVERLAP')
 
             FILTERED = '___FILTERED___'.lower()
             with open(path) as infile:
@@ -111,17 +112,24 @@ class Thesaurus(object):
                         logging.warn('Dodgy line in thesaurus file: %s\n %s', path, line)
                         continue
                     if tokens[0] != FILTERED:
+                        key = _smart_lower(tokens[0], ngram_separator, aggressive_lowercasing)
+
                         to_insert = [(_smart_lower(word, ngram_separator, aggressive_lowercasing), float(sim))
                                      for (word, sim) in walk_nonoverlapping_pairs(tokens, 1)
                                      if word.lower() != FILTERED and word in vocabulary and float(sim) > sim_threshold]
+
+                        if not allow_lexical_overlap:
+                            features = [(DocumentFeature.from_string(x[0]), x[1]) for x in to_insert]
+                            key_tokens = DocumentFeature.from_string(key).tokens
+                            to_insert = [(f[0].tokens_as_str(), f[1]) for f in features
+                                         if not any(t in key_tokens for t in f[0].tokens)]
+
                         if include_self:
-                            to_insert.insert(0, (_smart_lower(tokens[0],
-                                                              ngram_separator,
-                                                              aggressive_lowercasing), 1.0))
-                            # the step above may filter out all neighbours of an entry. if this happens,
-                            # do not bother adding it
+                            to_insert.insert(0, (key, 1.0))
+
+                        # the steps above may filter out all neighbours of an entry. if this happens,
+                        # do not bother adding it
                         if len(to_insert) > 0:
-                            key = _smart_lower(tokens[0], ngram_separator, aggressive_lowercasing)
                             if DocumentFeature.from_string(key).type == 'EMPTY':
                                 # do not load things in the wrong format, they'll get in the way later
                                 logging.info('Skipping thesaurus entry %s', key)

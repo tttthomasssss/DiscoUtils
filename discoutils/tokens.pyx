@@ -139,11 +139,9 @@ class Token(object):
 
     def __eq__(self, other):
         return (not self < other) and (not other < self)
-        # todo because of this the same string may results in different features if NER tagger tags it differently
-        # this may need to be changed
 
     def __lt__(self, other):
-        return (self.text, self.pos, self.ner) < (other.text, other.pos, other.ner)
+        return (self.text, self.pos) < (other.text, other.pos)
 
     def __hash__(self):
-        return hash((self.text, self.pos, self.ner))
+        return hash((self.text, self.pos))

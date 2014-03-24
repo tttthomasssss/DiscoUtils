@@ -1,0 +1,5 @@
+daily/J_pais/N	spanish/J_pais/N	1	newspaper/N_pais/N	1	el/N_pais/N	1	le/N_soir/N	0.969865	morning/N_herald/N	0.968482
+climactic/J_scene/N	obvious/J_scene/N	1	headache/N_scene/N	1	carefully-constructed/J_scene/N	1	bat/N_scene/N	1
+monetary/J_screw/N	mulan/J_screw/N	1	mushu/N_screw/N	1	thornton/N_screw/N	1	young/J_screw/N	1	american/N_dynamics/N	0.989636
+total/J_fee/N	ct/N_fee/N	1	visa/N_fee/N	1	substantial/J_fee/N	1	custom/N_fee/N	1	annual/J_fee/N	1	monthly/J_fee/N	1
+japanese/J_yen/N	bundesbank/N_yen/N	1	group/N_yen/N	1	skylark/N_yen/N	1	elder/J_yen/N	1	daily/J_mark/N	0.981391
