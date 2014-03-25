@@ -6,7 +6,7 @@ import pytest
 import numpy as np
 import scipy.sparse as sp
 
-from discoutils.reduce_dimensionality import _do_svd_single, _filter_out_infrequent_entries, do_svd
+from discoutils.reduce_dimensionality import _do_svd_single, filter_out_infrequent_entries, do_svd
 from discoutils.thesaurus_loader import Thesaurus
 from discoutils.tests.test_thesaurus import thesaurus_c
 
@@ -105,7 +105,7 @@ def all_cols(thesaurus_c):
     ),
 )
 def test_filter_out_infrequent_entries(thesaurus_c, all_cols, feature_type_limits, expected_shape, missing_columns):
-    mat, pos_tags, rows, cols = _filter_out_infrequent_entries(feature_type_limits, thesaurus_c)
+    mat, pos_tags, rows, cols = filter_out_infrequent_entries(feature_type_limits, thesaurus_c)
     assert mat.shape == expected_shape
     assert set(all_cols) - set(missing_columns) == set(cols)
 

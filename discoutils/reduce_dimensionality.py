@@ -19,7 +19,7 @@ except ImportError:
     import pickle
 
 
-def _filter_out_infrequent_entries(desired_counts_per_feature_type, thesaurus):
+def filter_out_infrequent_entries(desired_counts_per_feature_type, thesaurus):
     logging.info('Converting thesaurus to sparse matrix')
     mat, cols, rows = thesaurus.to_sparse_matrix()
     logging.info('Loaded a data matrix of shape %r', mat.shape)
@@ -128,7 +128,7 @@ def do_svd(input_paths, output_prefix,
     thesaurus = Thesaurus.from_tsv(input_paths, aggressive_lowercasing=False)
     if not thesaurus:
         raise ValueError('Empty thesaurus %r', input_paths)
-    mat, pos_tags, rows, cols = _filter_out_infrequent_entries(desired_counts_per_feature_type, thesaurus)
+    mat, pos_tags, rows, cols = filter_out_infrequent_entries(desired_counts_per_feature_type, thesaurus)
     if apply_to:
         thes_to_apply_to = Thesaurus.from_tsv(apply_to, aggressive_lowercasing=False, vocabulary=set(cols))
         # get the names of each thesaurus entry
