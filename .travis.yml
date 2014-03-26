@@ -2,17 +2,19 @@ language: python
 python:
   - "2.7"
 
-# setup code from http://dan-blanchard.roughdraft.io/7045057
-# Setup anaconda
+# scikit-learn's travis conf
 before_install:
-  - if [ ${TRAVIS_PYTHON_VERSION:0:1} == "2" ]; then wget http://repo.continuum.io/miniconda/Miniconda-3.3.0-Linux-x86_64.sh -O miniconda.sh; else wget http://repo.continuum.io/miniconda/Miniconda3-3.3.0-Linux-x86_64.sh -O miniconda.sh; fi
-  - chmod +x miniconda.sh
-  - ./miniconda.sh -b
-  - export PATH=/home/travis/anaconda/bin:$PATH
-  - conda update --yes conda
-  # The next couple lines fix a crash with multiprocessing on Travis and are not specific to using Miniconda
-  - sudo rm -rf /dev/shm
-  - sudo ln -s /run/shm /dev/shm
+    - if [[ $TRAVIS_PYTHON_VERSION != '2.7' ]]; then wget http://repo.continuum.io/miniconda/Miniconda-2.2.2-Linux-x86_64.sh -O miniconda.sh ; fi
+    - if [[ $TRAVIS_PYTHON_VERSION != '2.7' ]]; then chmod +x miniconda.sh ; fi
+    - if [[ $TRAVIS_PYTHON_VERSION != '2.7' ]]; then ./miniconda.sh -b ; fi
+    - if [[ $TRAVIS_PYTHON_VERSION != '2.7' ]]; then export PATH=/home/travis/anaconda/bin:$PATH ; fi
+    - if [[ $TRAVIS_PYTHON_VERSION != '2.7' ]]; then conda update --yes conda ; fi
+    - if [[ $TRAVIS_PYTHON_VERSION != '2.7' ]]; then conda update --yes conda ; fi
+    - if [[ $TRAVIS_PYTHON_VERSION != '2.7' ]]; then conda create -n testenv --yes pip python=$TRAVIS_PYTHON_VERSION ; fi
+    - if [[ $TRAVIS_PYTHON_VERSION != '2.7' ]]; then source activate testenv ; fi
+    - if [[ $TRAVIS_PYTHON_VERSION != '2.7' ]]; then conda install --yes numpy scipy nose ; fi
+    - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then sudo apt-get update -qq ; fi
+    - if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then sudo apt-get install -qq python-numpy python-scipy python-nose python-pip ; fi
 
 # Install packages
 install:
