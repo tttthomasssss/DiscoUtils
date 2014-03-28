@@ -141,7 +141,7 @@ class Token(object):
         return (not self < other) and (not other < self)
 
     def __lt__(self, other):
-        return (self.text, self.pos, self.ner) < (other.text, other.pos, other.ner)
+        return (self.text, self.pos) < (other.text, other.pos)
 
     def __hash__(self):
-        return hash((self.text, self.pos, self.ner))
+        return hash((self.text, self.pos))

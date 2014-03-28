@@ -47,7 +47,7 @@ def set_output_in_byblo_conf_file(filename, new_output_prefix, type='output'):
         try:
             index = lines.index('-%s' % type[0])
         except ValueError:
-            raise ValueError('Cannot find the "output" parameter to Byblo in file %s' % filename)
+            raise ValueError('Cannot find the "%s" parameter to Byblo in file %s' % (type, filename))
     lines.pop(index)
     lines.pop(index)
 

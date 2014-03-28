@@ -23,11 +23,44 @@ def thesaurus_c():
                               ngram_separator='_')
 
 
+@pytest.fixture
+def thes_without_overlap():
+    return Thesaurus.from_tsv(thesaurus_files=['discoutils/tests/resources/lexical-overlap.txt'],
+                              sim_threshold=0,
+                              include_self=False,
+                              ngram_separator='_',
+                              allow_lexical_overlap=False)
+
+@pytest.fixture
+def thes_with_overlap():
+    return Thesaurus.from_tsv(thesaurus_files=['discoutils/tests/resources/lexical-overlap.txt'],
+                              sim_threshold=0,
+                              include_self=False,
+                              ngram_separator='_',
+                              allow_lexical_overlap=True)
+
+
 def test_loading_bigram_thesaurus(thesaurus_c):
     assert len(thesaurus_c) == 5
     assert 'a/J_b/N' in thesaurus_c.keys()
     assert 'messed_up' not in thesaurus_c.keys()
 
+
+def test_disallow_lexical_overlap(thes_without_overlap):
+    # entries wil only overlapping neighbours must be removed
+    assert len(thes_without_overlap) == 3
+    # check the right number of neighbours are kept
+    assert len(thes_without_overlap['monetary/J_screw/N']) == 1
+    assert len(thes_without_overlap['daily/J_pais/N']) == 2
+    # check the right neighbour is kept
+    assert thes_without_overlap['japanese/J_yen/N'][0] == ('daily/J_mark/N', 0.981391)
+
+
+def test_allow_lexical_overlap(thes_with_overlap):
+    assert len(thes_with_overlap) == 5
+    assert len(thes_with_overlap['monetary/J_screw/N']) == 5
+    assert len(thes_with_overlap['daily/J_pais/N']) == 5
+    assert thes_with_overlap['japanese/J_yen/N'][0] == ('bundesbank/N_yen/N', 1.0)
 
 # todo check this
 def _assert_matrix_of_thesaurus_c_is_as_expected(matrix, rows, cols):
@@ -37,10 +70,10 @@ def _assert_matrix_of_thesaurus_c_is_as_expected(matrix, rows, cols):
     assert cols == ['a/N', 'b/V', 'd/J', 'g/N', 'x/X']
     # test the vectors for each entry
     expected_matrix = np.array([
-        [0.1, 0., 0.2, 0.8, 0.],  # ab
-        [0., 0.1, 0.5, 0.3, 0.],  # a
-        [0.1, 0., 0.3, 0.6, 0.],  # b
-        [0.5, 0.3, 0., 0.7, 0.],  # d
+        [0.1, 0., 0.2, 0.8, 0.], # ab
+        [0., 0.1, 0.5, 0.3, 0.], # a
+        [0.1, 0., 0.3, 0.6, 0.], # b
+        [0.5, 0.3, 0., 0.7, 0.], # d
         [0.3, 0.6, 0.7, 0., 0.9]  # g
     ])
     # put the rows in the matrix in the order in which they are in expected_matrix
@@ -118,10 +151,10 @@ def test_load_with_predefined_vocabulary():
     t = Thesaurus.from_tsv(thesaurus_files=['discoutils/tests/resources/exp0-0c.strings'],
                            vocabulary={'a/N', 'b/V', 'd/J', 'g/N'})
     expected_matrix = np.array([
-        [0.1, 0., 0.2, 0.8],  # ab
-        [0., 0.1, 0.5, 0.3],  # a
-        [0.1, 0., 0.3, 0.6],  # b
-        [0.5, 0.3, 0., 0.7],  # d
+        [0.1, 0., 0.2, 0.8], # ab
+        [0., 0.1, 0.5, 0.3], # a
+        [0.1, 0., 0.3, 0.6], # b
+        [0.5, 0.3, 0., 0.7], # d
         [0.3, 0.6, 0.7, 0.]  # g
     ])
     mat, cols, rows = t.to_sparse_matrix()
