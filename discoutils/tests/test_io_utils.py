@@ -5,7 +5,7 @@ import scipy.sparse as sp
 from discoutils.tokens import DocumentFeature
 from discoutils.tests.test_dimensionality_reduction import _read_and_strip_lines
 from discoutils.io_utils import write_vectors_to_disk
-from discoutils.tests.test_thesaurus import thesaurus_c
+from discoutils.tests.test_thesaurus import thesaurus_c # this is used, do not remove
 
 
 __author__ = 'mmb28'
@@ -13,9 +13,9 @@ __author__ = 'mmb28'
 
 @pytest.fixture(params=['normal', 'abbreviated', 'empty', 'with_filter', 'with_verb_only_filter'], scope='function')
 def resources(thesaurus_c, request):
-    filter_callable = lambda x: True  # accept and write all entries by default
+    filter_callable = lambda x: True
     features = ['a/N', 'b/V', 'd/J', 'g/N', 'x/X']
-    entries = [x.tokens_as_str() for x in sorted(thesaurus_c.keys())]
+    entries = list(sorted(thesaurus_c.keys()))
 
     if request.param == 'empty':
         thesaurus_c.clear()
@@ -32,8 +32,8 @@ def resources(thesaurus_c, request):
 
     if request.param == 'abbreviated':
         del thesaurus_c['g/N']
-        features.pop(-1)  # remove x/X
-        entries = [x.tokens_as_str() for x in sorted(thesaurus_c.keys())]
+        features.pop(-1) # remove x/X
+        entries = thesaurus_c.keys()
 
     return thesaurus_c, entries, features, filter_callable
 
@@ -50,12 +50,11 @@ def test_write_vectors_to_disk(resources, tmpdir):
     entries_file = str(tmpdir.join('entries.txt'))
     features_file = str(tmpdir.join('features.txt'))
 
-    matrix, cols, rows = th.to_sparse_matrix(row_transform=None, column_transform=None)
+    matrix, cols, rows = th.to_sparse_matrix()
+    rows = [DocumentFeature.from_string(x) for x in rows]
     write_vectors_to_disk(sp.coo_matrix(matrix), rows, cols,
                           events_file, features_file, entries_file,
-                          entry_filter=filter_callable,
-                          row_transform=DocumentFeature.tokens_as_str,
-                          column_transform=DocumentFeature.tokens_as_str)
+                          entry_filter=filter_callable)
 
     if expected_entries:
         # the file will not be written at all if there's nothing to put in it
