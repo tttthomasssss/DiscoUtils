@@ -21,15 +21,14 @@ except ImportError:
 
 def filter_out_infrequent_entries(desired_counts_per_feature_type, thesaurus):
     logging.info('Converting thesaurus to sparse matrix')
-    mat, cols, rows = thesaurus.to_sparse_matrix()
+    mat, cols, rows = thesaurus.to_sparse_matrix(row_transform=None, column_transform=None)
     logging.info('Loaded a data matrix of shape %r', mat.shape)
     # convert to document feature for access to PoS tag
-    document_features = [DocumentFeature.from_string(r) for r in rows]
     # don't want to do dimensionality reduction on composed vectors
-    feature_types = [sorted_idx_and_pos_matching.type for sorted_idx_and_pos_matching in document_features]
+    feature_types = [sorted_idx_and_pos_matching.type for sorted_idx_and_pos_matching in rows]
     assert all(x == '1-GRAM' or x == 'AN' or x == 'NN' for x in feature_types)
     # get the PoS tags of each row in the matrix
-    pos_tags = np.array([df.tokens[0].pos if df.type == '1-GRAM' else df.type for df in document_features])
+    pos_tags = np.array([df.tokens[0].pos if df.type == '1-GRAM' else df.type for df in rows])
     # find the rows of the matrix that correspond to the most frequent nouns, verbs, ...,
     # as measured by sum of feature counts. This is Byblo's definition of frequency (which is in fact a marginal),
     # but it is strongly correlated with one normally thinks of as entry frequency
@@ -56,14 +55,14 @@ def filter_out_infrequent_entries(desired_counts_per_feature_type, thesaurus):
 
     # remove the vectors for infrequent entries, update list of pos tags too
     mat = mat[desired_rows, :]
-    rows = itemgetter(*desired_rows)(document_features)
+    rows = list(itemgetter(*desired_rows)(rows))
     pos_tags = pos_tags[desired_rows]
     # removing rows may empty some columns, remove these as well. This is probably not very like to occur as we have
     # already filtered out infrequent features, so the column count will stay roughly the same
     desired_cols = np.ravel(mat.sum(0)) > 0
     mat = mat[:, desired_cols]
     col_indices = list(np.where(desired_cols)[0])
-    cols = itemgetter(*col_indices)(cols)
+    cols = list(itemgetter(*col_indices)(cols))
     logging.info('Selected only the most frequent entries, matrix size is now %r', mat.shape)
     return mat, pos_tags, rows, cols
 
@@ -91,8 +90,10 @@ def _write_to_disk(reduced_mat, method, prefix, rows):
     entries_file = prefix + '.entries.filtered.strings'
     model_file = prefix + '.model.pkl'
     write_vectors_to_disk(reduced_mat, rows,
-                          ['SVD:feat{0:05d}'.format(i) for i in range(reduced_mat.shape[1])],
-                          events_file, features_file, entries_file)
+                          # make up some feature names that are parsable into DocumentFeatures
+                          ['feat{}/SVD'.format(i) for i in range(reduced_mat.shape[1])],
+                          events_file, features_file, entries_file,
+                          column_transform=None) # do not do anything to the feature names, they are correct already
 
     # disabled because it causes a crash with large objects
     # see http://bugs.python.org/issue11564
@@ -132,7 +133,7 @@ def do_svd(input_paths, output_prefix,
     if apply_to:
         thes_to_apply_to = Thesaurus.from_tsv(apply_to, aggressive_lowercasing=False, vocabulary=set(cols))
         # get the names of each thesaurus entry
-        extra_rows = [x for x in thes_to_apply_to.keys()]
+        extra_rows = thes_to_apply_to.keys()
         # vectorize second matrix with the vocabulary (columns) of the first thesaurus to ensure shapes match
         # "project" second thesaurus into space of first thesaurus
         thesaurus.v.vocabulary_ = {x: i for i, x in enumerate(list(cols))}
@@ -142,9 +143,9 @@ def do_svd(input_paths, output_prefix,
 
         if write == 3:
             # extend the list of names
-            rows = list(rows) + [DocumentFeature.from_string(x) for x in extra_rows]
+            rows = rows + extra_rows # todo what if rows and extra_rows share entries???
         elif write == 2:
-            rows = [DocumentFeature.from_string(x) for x in extra_rows]
+            rows = extra_rows
             # no need to do anything if write == 1
 
     for n_components in reduce_to:

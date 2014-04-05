@@ -37,13 +37,15 @@ class DocumentFeature(object):
         :param string: the string to parse
         :return: DocumentFeature corresponding to the input string or DocumentFeature(type, tuple(tokens))
         """
+        if isinstance(string, DocumentFeature):
+            return string
         try:
             match = cls._TOKEN_RE.split(string, 3)
             type = ''.join(match[2::3])
             match = iter(match)
             tokens = []
             for (junk, word, pos) in izip_longest(match, match, match):
-                if junk:        # Either too many tokens, or invalid token
+                if junk:  # Either too many tokens, or invalid token
                     raise ValueError(junk)
                 if not word:
                     break
@@ -128,7 +130,7 @@ class Token(object):
     def __init__(self, text, pos, index=0, ner='O'):
         self.text = text
         self.pos = pos
-        self.index = index # useful when parsing CONLL
+        self.index = index  # useful when parsing CONLL
         self.ner = ner
 
     def __str__(self):

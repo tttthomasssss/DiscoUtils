@@ -2,12 +2,15 @@ from itertools import groupby, chain
 import logging
 import numpy as np
 from scipy.sparse import isspmatrix_coo
+from discoutils.tokens import DocumentFeature
 
 __author__ = 'mmb28'
 
 
 def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, features_path='', entries_path='',
-                          entry_filter=lambda x: True):
+                          entry_filter=lambda x: True,
+                          row_transform=DocumentFeature.tokens_as_str,
+                          column_transform=DocumentFeature.tokens_as_str):
     """
     Converts a matrix and its associated row/column indices to a Byblo compatible entries/features/event files,
     possibly applying a tranformation function to each entry
@@ -15,7 +18,7 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
     :type matrix: scipy.sparse.coo_matrix
     :param row_index: sorted list of DocumentFeature-s representing entry names
     :type row_index: thesisgenerator.plugins.tokenizer.DocumentFeature
-    :param column_index: sorted list of feature names
+    :param column_index: sorted list of DocumentFeatures
     :param features_path: str, where to write the Byblo features file. If the entry_filter removes all entries
     this file will not be written, i.e. the file will not be created at all if there's nothing to put in it
     :param entries_path: str, where to write the Byblo entries file. If the entry_filter removes all entries
@@ -51,10 +54,17 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
         entry = row_index[row_num]
         if entry_filter(entry):
             accepted_rows.append(row_num)
-            features_and_counts = [(column_index[x[1]], x[2]) for x in column_ids_and_values]
+            features_and_counts = []
+            for x in column_ids_and_values:
+                feature = column_index[x[1]]
+                count = x[2]
+                if column_transform:
+                    features_and_counts.append((column_transform(feature), count))
+                else:
+                    features_and_counts.append((feature, count))
 
             outfile.write('%s\t%s\n' % (
-                entry.tokens_as_str(),
+                row_transform(entry) if row_transform else entry,
                 '\t'.join(map(str, chain.from_iterable(features_and_counts)))
             ))
             accepted_entry_counts[entry] = sum(x[1] for x in features_and_counts)
@@ -67,7 +77,8 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
         logging.info('Writing entries to %s', entries_path)
         with open(entries_path, 'w') as outfile:
             for entry, count in accepted_entry_counts.iteritems():
-                outfile.write('%s\t%f\n' % (entry.tokens_as_str(), count))
+                e = row_transform(entry) if row_transform else entry
+                outfile.write('%s\t%f\n' % (e, count))
 
     if features_path and accepted_rows:  # guard against empty files
         logging.info('Writing features to %s', features_path)
@@ -75,7 +86,8 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
             feature_sums = np.array(matrix.tocsr()[accepted_rows].sum(axis=0))[0, :]
             for feature, count in zip(column_index, feature_sums):
                 if count > 0:
-                    outfile.write('%s\t%f\n' % (feature, count))
+                    f = column_transform(feature) if column_transform else feature
+                    outfile.write('%s\t%f\n' % (f, count))
 
 
 def reformat_entries(filename, suffix, function, separator='\t'):

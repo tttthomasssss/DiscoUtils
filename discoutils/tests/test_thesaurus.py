@@ -10,6 +10,7 @@ from numpy.testing import assert_array_equal
 
 from discoutils.thesaurus_loader import _smart_lower, Thesaurus
 from discoutils.collections_utils import walk_nonoverlapping_pairs
+from discoutils.tokens import DocumentFeature
 
 
 __author__ = 'mmb28'
@@ -31,6 +32,7 @@ def thes_without_overlap():
                               ngram_separator='_',
                               allow_lexical_overlap=False)
 
+
 @pytest.fixture
 def thes_with_overlap():
     return Thesaurus.from_tsv(thesaurus_files=['discoutils/tests/resources/lexical-overlap.txt'],
@@ -42,8 +44,8 @@ def thes_with_overlap():
 
 def test_loading_bigram_thesaurus(thesaurus_c):
     assert len(thesaurus_c) == 5
-    assert 'a/J_b/N' in thesaurus_c.keys()
-    assert 'messed_up' not in thesaurus_c.keys()
+    assert 'a/J_b/N' in thesaurus_c
+    assert 'messed_up' not in thesaurus_c
 
 
 def test_disallow_lexical_overlap(thes_without_overlap):
@@ -62,6 +64,7 @@ def test_allow_lexical_overlap(thes_with_overlap):
     assert len(thes_with_overlap['daily/J_pais/N']) == 5
     assert thes_with_overlap['japanese/J_yen/N'][0] == ('bundesbank/N_yen/N', 1.0)
 
+
 # todo check this
 def _assert_matrix_of_thesaurus_c_is_as_expected(matrix, rows, cols):
     # rows may come in any order
@@ -70,10 +73,10 @@ def _assert_matrix_of_thesaurus_c_is_as_expected(matrix, rows, cols):
     assert cols == ['a/N', 'b/V', 'd/J', 'g/N', 'x/X']
     # test the vectors for each entry
     expected_matrix = np.array([
-        [0.1, 0., 0.2, 0.8, 0.], # ab
-        [0., 0.1, 0.5, 0.3, 0.], # a
-        [0.1, 0., 0.3, 0.6, 0.], # b
-        [0.5, 0.3, 0., 0.7, 0.], # d
+        [0.1, 0., 0.2, 0.8, 0.],  # ab
+        [0., 0.1, 0.5, 0.3, 0.],  # a
+        [0.1, 0., 0.3, 0.6, 0.],  # b
+        [0.5, 0.3, 0., 0.7, 0.],  # d
         [0.3, 0.6, 0.7, 0., 0.9]  # g
     ])
     # put the rows in the matrix in the order in which they are in expected_matrix
@@ -82,7 +85,8 @@ def _assert_matrix_of_thesaurus_c_is_as_expected(matrix, rows, cols):
 
 
 def test_to_sparse_matrix(thesaurus_c):
-    matrix, cols, rows = thesaurus_c.to_sparse_matrix()
+    matrix, cols, rows = thesaurus_c.to_sparse_matrix(row_transform=DocumentFeature.tokens_as_str,
+                                                      column_transform=DocumentFeature.tokens_as_str)
     matrix = matrix.A
     assert matrix.shape == (5, 5)
 
@@ -110,7 +114,7 @@ def test_to_file(thesaurus_c, tmpdir):
 
     # can't just assert t1 == thesaurus_c, because to_file may reorder the columns
     for k, v in thesaurus_c.iteritems():
-        assert k in t1.keys()
+        assert k in t1
         assert set(v) == set(thesaurus_c[k])
 
 
@@ -123,7 +127,9 @@ def test_to_dissect_sparse_files(thesaurus_c, tmpdir):
     from composes.semantic_space.space import Space
 
     prefix = str(tmpdir.join('output'))
-    thesaurus_c.to_dissect_sparse_files(prefix)
+    thesaurus_c.to_dissect_sparse_files(prefix,
+                                        row_transform=DocumentFeature.tokens_as_str,
+                                        column_transform=DocumentFeature.tokens_as_str)
     # check that files are there
     for suffix in ['sm', 'rows', 'cols']:
         outfile = '{}.{}'.format(prefix, suffix)
@@ -137,7 +143,8 @@ def test_to_dissect_sparse_files(thesaurus_c, tmpdir):
                         format="sm")
 
     matrix, rows, cols = space.cooccurrence_matrix.mat, space.id2row, space.id2column
-    exp_matrix, exp_cols, exp_rows = thesaurus_c.to_sparse_matrix()
+    exp_matrix, exp_cols, exp_rows = thesaurus_c.to_sparse_matrix(row_transform=DocumentFeature.tokens_as_str,
+                                                                  column_transform=DocumentFeature.tokens_as_str)
 
     assert exp_cols == cols
     assert exp_rows == rows
@@ -149,26 +156,33 @@ def test_to_dissect_sparse_files(thesaurus_c, tmpdir):
 def test_load_with_predefined_vocabulary():
     # test if constraining the vocabulary a bit correctly drops columns
     t = Thesaurus.from_tsv(thesaurus_files=['discoutils/tests/resources/exp0-0c.strings'],
-                           vocabulary={'a/N', 'b/V', 'd/J', 'g/N'})
+                           vocabulary=map(DocumentFeature.from_string, ['a/N', 'b/V', 'd/J', 'g/N']))
     expected_matrix = np.array([
-        [0.1, 0., 0.2, 0.8], # ab
-        [0., 0.1, 0.5, 0.3], # a
-        [0.1, 0., 0.3, 0.6], # b
-        [0.5, 0.3, 0., 0.7], # d
+        [0.1, 0., 0.2, 0.8],  # ab
+        [0., 0.1, 0.5, 0.3],  # a
+        [0.1, 0., 0.3, 0.6],  # b
+        [0.5, 0.3, 0., 0.7],  # d
         [0.3, 0.6, 0.7, 0.]  # g
     ])
     mat, cols, rows = t.to_sparse_matrix()
     assert set(cols) == {'a/N', 'b/V', 'd/J', 'g/N'}
     assert mat.shape == (5, 4)
-    np.testing.assert_array_equal(expected_matrix.sum(axis=0)[np.newaxis], mat.sum(axis=0))
+    np.testing.assert_almost_equal(expected_matrix.sum(axis=0), mat.A.sum(axis=0))
 
     # test if severely constraining the vocabulary a bit correctly drops columns AND rows
     t = Thesaurus.from_tsv(thesaurus_files=['discoutils/tests/resources/exp0-0c.strings'],
-                           vocabulary={'x/X'})
+                           vocabulary={DocumentFeature.from_string('x/X')})
     mat, cols, rows = t.to_sparse_matrix()
     assert set(cols) == {'x/X'}
     assert mat.A == np.array([0.9])
 
+def test_query_thesaurus_with_string(thesaurus_c):
+    with_feature = thesaurus_c[DocumentFeature.from_string('d/J')]
+    with_str = thesaurus_c['d/J']
+
+    assert [DocumentFeature.from_string(x[0]) for x in with_str] == [x[0] for x in with_feature]
+    assert [x[0].tokens_as_str() for x in with_feature] == [x[0] for x in with_str]
+    assert [x[1] for x in with_feature] == [x[1] for x in with_str]
 
 class TestLoad_thesauri(TestCase):
     def setUp(self):
@@ -215,7 +229,9 @@ class TestLoad_thesauri(TestCase):
         d = shelve.open(filename, flag='r')  # read only
         from_shelf = Thesaurus(d)
         for k, v in self.thesaurus.iteritems():
-            self.assertEqual(self.thesaurus[k], from_shelf[k])
+            inmemory = self.thesaurus[k]
+            fromdisk = from_shelf[k]
+            self.assertEqual(inmemory, fromdisk)
 
         #  check mutability
         self.thesaurus['some_value'] = ('should be possible', 0)
@@ -245,7 +261,7 @@ class TestLoad_thesauri(TestCase):
             th = self._reload_and_assert(j, k)
 
             for entry, neighbours in th.items():
-                self.assertIsInstance(entry, str)
+                self.assertIsInstance(entry, DocumentFeature)
                 self.assertIsInstance(neighbours, list)
                 self.assertIsInstance(neighbours[0], tuple)
                 if i:
