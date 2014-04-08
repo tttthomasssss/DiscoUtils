@@ -47,8 +47,8 @@ class Thesaurus(object):
 
     @classmethod
     def from_tsv(cls, thesaurus_files='', sim_threshold=0, include_self=False,
-                 aggressive_lowercasing=True, ngram_separator='_', vocabulary=ContainsEverything(),
-                 allow_lexical_overlap=True):
+                 aggressive_lowercasing=True, ngram_separator='_', allow_lexical_overlap=True,
+                 row_filter=lambda x, y: True, column_filter=lambda x: True):
         """
         Create a Thesaurus by parsing a Byblo-compatible TSV files (events or sims).
         If duplicate values are encoutered during parsing, only the latest will be kept.
@@ -65,31 +65,11 @@ class Thesaurus(object):
             will take place. This might be desirable when readings feature lists
         :type aggressive_lowercasing: bool
         :param ngram_separator: When n_gram entries are read in, what are the indidivual tokens separated by
-        :param vocabulary: a set of strings. Features not contained in this set will be discarded.
+        :param column_filter: A function that takes a string (column in the file) and returns whether or not
+        the string should be kept
+        :param row_filter: takes a string and its corresponding DocumentFeature and determines if it should be loaded
         :param allow_lexical_overlap: whether neighbours/features are allowed to overlap lexically with the entry
         they are neighbours/features of
-        """
-        return cls._read_from_disk(thesaurus_files, sim_threshold, include_self, ngram_separator,
-                                   aggressive_lowercasing, vocabulary, allow_lexical_overlap)
-
-
-    @classmethod
-    def _read_from_disk(cls, thesaurus_files, sim_threshold, include_self, ngram_separator,
-                        aggressive_lowercasing, vocabulary, allow_lexical_overlap):
-        """
-        Loads a set Byblo-generated thesaurus form the specified file and
-        returns their union. If any of the files has been parsed already a
-        cached version is used.
-
-        Parameters:
-        thesaurus_files: string, path the the Byblo-generated thesaurus
-        use_pos: boolean, whether the PoS tags should be stripped from
-        entities (if they are present)
-        sim_threshold: what is the min similarity for neighbours that
-        should be loaded
-
-        Returns:
-        A set of thesauri or an empty dictionary
         """
 
         if not thesaurus_files:
@@ -111,16 +91,22 @@ class Thesaurus(object):
                         # and pairs for (neighbour, similarity)
                         logging.warn('Dodgy line in thesaurus file: %s\n %s', path, line)
                         continue
+
                     if tokens[0] != FILTERED:
                         key = _smart_lower(tokens[0], ngram_separator, aggressive_lowercasing)
+                        dfkey = DocumentFeature.from_string(key)
+
+                        if dfkey.type == 'EMPTY' or (not row_filter(key, dfkey)):
+                            # do not load things in the wrong format, they'll get in the way later
+                            continue
 
                         to_insert = [(_smart_lower(word, ngram_separator, aggressive_lowercasing), float(sim))
                                      for (word, sim) in walk_nonoverlapping_pairs(tokens, 1)
-                                     if word.lower() != FILTERED and word in vocabulary and float(sim) > sim_threshold]
+                                     if word.lower() != FILTERED and column_filter(word) and float(sim) > sim_threshold]
 
                         if not allow_lexical_overlap:
                             features = [(DocumentFeature.from_string(x[0]), x[1]) for x in to_insert]
-                            key_tokens = DocumentFeature.from_string(key).tokens
+                            key_tokens = dfkey.tokens
                             to_insert = [(f[0].tokens_as_str(), f[1]) for f in features
                                          if not any(t in key_tokens for t in f[0].tokens)]
 
@@ -130,10 +116,6 @@ class Thesaurus(object):
                         # the steps above may filter out all neighbours of an entry. if this happens,
                         # do not bother adding it
                         if len(to_insert) > 0:
-                            if DocumentFeature.from_string(key).type == 'EMPTY':
-                                # do not load things in the wrong format, they'll get in the way later
-                                logging.info('Skipping thesaurus entry %s', key)
-                                continue
 
                             if key in to_return:
                                 # todo this better not be a neighbours file, merging doesn't work there

@@ -31,6 +31,7 @@ def thes_without_overlap():
                               ngram_separator='_',
                               allow_lexical_overlap=False)
 
+
 @pytest.fixture
 def thes_with_overlap():
     return Thesaurus.from_tsv(thesaurus_files=['discoutils/tests/resources/lexical-overlap.txt'],
@@ -62,6 +63,7 @@ def test_allow_lexical_overlap(thes_with_overlap):
     assert len(thes_with_overlap['daily/J_pais/N']) == 5
     assert thes_with_overlap['japanese/J_yen/N'][0] == ('bundesbank/N_yen/N', 1.0)
 
+
 # todo check this
 def _assert_matrix_of_thesaurus_c_is_as_expected(matrix, rows, cols):
     # rows may come in any order
@@ -70,10 +72,10 @@ def _assert_matrix_of_thesaurus_c_is_as_expected(matrix, rows, cols):
     assert cols == ['a/N', 'b/V', 'd/J', 'g/N', 'x/X']
     # test the vectors for each entry
     expected_matrix = np.array([
-        [0.1, 0., 0.2, 0.8, 0.], # ab
-        [0., 0.1, 0.5, 0.3, 0.], # a
-        [0.1, 0., 0.3, 0.6, 0.], # b
-        [0.5, 0.3, 0., 0.7, 0.], # d
+        [0.1, 0., 0.2, 0.8, 0.],  # ab
+        [0., 0.1, 0.5, 0.3, 0.],  # a
+        [0.1, 0., 0.3, 0.6, 0.],  # b
+        [0.5, 0.3, 0., 0.7, 0.],  # d
         [0.3, 0.6, 0.7, 0., 0.9]  # g
     ])
     # put the rows in the matrix in the order in which they are in expected_matrix
@@ -146,15 +148,15 @@ def test_to_dissect_sparse_files(thesaurus_c, tmpdir):
     _assert_matrix_of_thesaurus_c_is_as_expected(exp_matrix.A, exp_rows, exp_cols)
 
 
-def test_load_with_predefined_vocabulary():
+def test_load_with_column_filter():
     # test if constraining the vocabulary a bit correctly drops columns
     t = Thesaurus.from_tsv(thesaurus_files=['discoutils/tests/resources/exp0-0c.strings'],
-                           vocabulary={'a/N', 'b/V', 'd/J', 'g/N'})
+                           column_filter=lambda x: x in {'a/N', 'b/V', 'd/J', 'g/N'})
     expected_matrix = np.array([
-        [0.1, 0., 0.2, 0.8], # ab
-        [0., 0.1, 0.5, 0.3], # a
-        [0.1, 0., 0.3, 0.6], # b
-        [0.5, 0.3, 0., 0.7], # d
+        [0.1, 0., 0.2, 0.8],  # ab
+        [0., 0.1, 0.5, 0.3],  # a
+        [0.1, 0., 0.3, 0.6],  # b
+        [0.5, 0.3, 0., 0.7],  # d
         [0.3, 0.6, 0.7, 0.]  # g
     ])
     mat, cols, rows = t.to_sparse_matrix()
@@ -164,10 +166,25 @@ def test_load_with_predefined_vocabulary():
 
     # test if severely constraining the vocabulary a bit correctly drops columns AND rows
     t = Thesaurus.from_tsv(thesaurus_files=['discoutils/tests/resources/exp0-0c.strings'],
-                           vocabulary={'x/X'})
+                           column_filter=lambda x: x in {'x/X'})
     mat, cols, rows = t.to_sparse_matrix()
     assert set(cols) == {'x/X'}
     assert mat.A == np.array([0.9])
+
+
+def test_load_with_row_filter():
+    # test if constraining the vocabulary a bit correctly drops columns
+    t = Thesaurus.from_tsv(thesaurus_files=['discoutils/tests/resources/exp0-0c.strings'],
+                           row_filter=lambda x, y: x in {'a/N', 'd/J', 'g/N'})
+    expected_matrix = np.array([
+        [0., 0.1, 0.5, 0.3, 0.],  # a
+        [0.5, 0.3, 0., 0.7, 0.],  # d
+        [0.3, 0.6, 0.7, 0., 0.9]  # g
+    ])
+    mat, cols, rows = t.to_sparse_matrix()
+    assert set(cols) == {'a/N', 'b/V', 'd/J', 'g/N', 'x/X'}
+    assert set(rows) == {'a/N', 'd/J', 'g/N'}
+    np.testing.assert_array_equal(expected_matrix.sum(axis=0)[np.newaxis], mat.sum(axis=0))
 
 
 class TestLoad_thesauri(TestCase):
