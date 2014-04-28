@@ -187,6 +187,15 @@ def test_load_with_row_filter():
     np.testing.assert_array_equal(expected_matrix.sum(axis=0)[np.newaxis], mat.sum(axis=0))
 
 
+def test_load_with_max_num_neighbours():
+    t = Thesaurus.from_tsv(thesaurus_files=['discoutils/tests/resources/exp0-0c.strings'],
+                           max_neighbours=1)
+    assert all(len(neigh) == 1 for neigh in t.values())
+    mat, cols, rows = t.to_sparse_matrix()
+    assert set(rows) == set(['g/N', 'a/N', 'd/J', 'b/V', 'a/J_b/N'])
+    assert cols == ['d/J', 'g/N', 'x/X']
+
+
 class TestLoad_thesauri(TestCase):
     def setUp(self):
         """
@@ -286,3 +295,9 @@ class TestLoad_thesauri(TestCase):
         inp = [0, 1, 2, 3, 4, 5, 6, 7, 8]
         output1 = [x for x in walk_nonoverlapping_pairs(inp, 1)]
         self.assertListEqual([(1, 2), (3, 4), (5, 6), (7, 8)], output1)
+
+        output1 = [x for x in walk_nonoverlapping_pairs(inp, 1, max_pairs=2)]
+        self.assertListEqual([(1, 2), (3, 4)], output1)
+
+        output1 = [x for x in walk_nonoverlapping_pairs(inp, 1, max_pairs=-2)]
+        self.assertListEqual([], output1)

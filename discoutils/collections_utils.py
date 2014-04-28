@@ -13,10 +13,11 @@ def walk_overlapping_pairs(iterable):
     return izip(a, b)
 
 
-def walk_nonoverlapping_pairs(iterable, beg):
-    '''
-    s -> (s0,s1), (s2,s3), ...
-    '''
-    for i in xrange(beg, min(len(iterable) - 1, len(iterable)), 2):  # step size 2
-        yield (iterable[i], iterable[i + 1])
+def walk_nonoverlapping_pairs(iterable, beg, max_pairs=1e20):
+    """
+    s -> (s0,s1), (s2,s3), ..., yielding at most max_pair tuples
+    """
+    for tuple_number, index in enumerate(xrange(beg, min(len(iterable) - 1, len(iterable)), 2)):
+        if tuple_number <= max_pairs - 1:
+            yield (iterable[index], iterable[index + 1])
 

@@ -48,7 +48,8 @@ class Thesaurus(object):
     @classmethod
     def from_tsv(cls, thesaurus_files='', sim_threshold=0, include_self=False,
                  aggressive_lowercasing=True, ngram_separator='_', allow_lexical_overlap=True,
-                 row_filter=lambda x, y: True, column_filter=lambda x: True, max_len=50):
+                 row_filter=lambda x, y: True, column_filter=lambda x: True, max_len=50,
+                 max_neighbours=1e8):
         """
         Create a Thesaurus by parsing a Byblo-compatible TSV files (events or sims).
         If duplicate values are encoutered during parsing, only the latest will be kept.
@@ -71,6 +72,7 @@ class Thesaurus(object):
         :param allow_lexical_overlap: whether neighbours/features are allowed to overlap lexically with the entry
         they are neighbours/features of
         :param max_len: maximum length (in characters) of permissible entries. Longer entries are ignored.
+        :param max_neighbours: maximum neighbours/features per entry.
         """
 
         if not thesaurus_files:
@@ -102,7 +104,7 @@ class Thesaurus(object):
                             continue
 
                         to_insert = [(_smart_lower(word, ngram_separator, aggressive_lowercasing), float(sim))
-                                     for (word, sim) in walk_nonoverlapping_pairs(tokens, 1)
+                                     for (word, sim) in walk_nonoverlapping_pairs(tokens, 1, max_neighbours)
                                      if word.lower() != FILTERED and column_filter(word) and float(sim) > sim_threshold]
 
                         if not allow_lexical_overlap:
