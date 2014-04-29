@@ -196,6 +196,37 @@ def test_load_with_max_num_neighbours():
     assert cols == ['d/J', 'g/N', 'x/X']
 
 
+def test_max_num_neighbours_and_no_lexical_overlap():
+    # max_neighbours filtering should kick in after lexical overlap filtering
+    t = Thesaurus.from_tsv(thesaurus_files=['discoutils/tests/resources/exp0-0d.strings'],
+                           allow_lexical_overlap=False)
+    assert len(t) == 4
+    assert len(t['trade/N_law/N']) == 1
+    assert len(t['prince/N_aziz/N']) == 3
+    assert len(t['important/J_country/N']) == 5
+    assert len(t['foreign/J_line/N']) == 3
+
+    t = Thesaurus.from_tsv(thesaurus_files=['discoutils/tests/resources/exp0-0d.strings'],
+                           allow_lexical_overlap=False,
+                           max_neighbours=1)
+    assert len(t) == 4
+    assert len(t['trade/N_law/N']) == 1
+    assert t['trade/N_law/N'][0][0] == 'product/N_line/N'
+    assert len(t['prince/N_aziz/N']) == 1
+    assert len(t['important/J_country/N']) == 1
+    assert len(t['foreign/J_line/N']) == 1
+
+    t = Thesaurus.from_tsv(thesaurus_files=['discoutils/tests/resources/exp0-0d.strings'])
+    assert t['trade/N_law/N'][0][0] == 'law/N'
+    assert t['trade/N_law/N'][4][0] == 'product/N_line/N'
+
+    t = Thesaurus.from_tsv(thesaurus_files=['discoutils/tests/resources/exp0-0d.strings'],
+                           allow_lexical_overlap=True,
+                           max_neighbours=1)
+    assert t['trade/N_law/N'][0][0] == 'law/N'
+    assert len(t['trade/N_law/N']) == 1
+
+
 class TestLoad_thesauri(TestCase):
     def setUp(self):
         """
@@ -289,7 +320,7 @@ class TestLoad_thesauri(TestCase):
         self.assertEquals(_smart_lower('Red/J CaT/N', separator=' '), 'red/J cat/N')
 
         # test that features are not touched
-        self.assertEquals(_smart_lower('amod-DEP:former', aggressive_lowercasing=False), 'amod-DEP:former')
+        self.assertEquals(_smart_lower('amod-DEP:former', lowercasing=False), 'amod-DEP:former')
 
     def test_iterate_nonoverlapping_pairs(self):
         inp = [0, 1, 2, 3, 4, 5, 6, 7, 8]

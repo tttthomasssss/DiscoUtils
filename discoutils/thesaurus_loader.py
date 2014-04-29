@@ -47,7 +47,7 @@ class Thesaurus(object):
 
     @classmethod
     def from_tsv(cls, thesaurus_files='', sim_threshold=0, include_self=False,
-                 aggressive_lowercasing=True, ngram_separator='_', allow_lexical_overlap=True,
+                 lowercasing=False, ngram_separator='_', allow_lexical_overlap=True,
                  row_filter=lambda x, y: True, column_filter=lambda x: True, max_len=50,
                  max_neighbours=1e8):
         """
@@ -61,10 +61,11 @@ class Thesaurus(object):
         :param include_self: whether to include self as nearest neighbour. Only applicable when holding
          similarities and not vectors
         :type include_self: bool
-        :param aggressive_lowercasing: if true, most of what is read will be lowercased (excluding PoS tags), so
+        :param lowercasing: if true, most of what is read will be lowercased (excluding PoS tags), so
             Cat/N -> cat/N. This is desirable when reading full thesauri with this class. If False, no lowercasing
-            will take place. This might be desirable when readings feature lists
-        :type aggressive_lowercasing: bool
+            will take place. This might be desirable when readings feature lists or already lowercased neighbour
+            lists. FET + Byblo thesauri are already lowercased.
+        :type lowercasing: bool
         :param ngram_separator: When n_gram entries are read in, what are the indidivual tokens separated by
         :param column_filter: A function that takes a string (column in the file) and returns whether or not
         the string should be kept
@@ -72,7 +73,8 @@ class Thesaurus(object):
         :param allow_lexical_overlap: whether neighbours/features are allowed to overlap lexically with the entry
         they are neighbours/features of
         :param max_len: maximum length (in characters) of permissible entries. Longer entries are ignored.
-        :param max_neighbours: maximum neighbours/features per entry.
+        :param max_neighbours: maximum neighbours/features per entry. This is applied AFTER the filtering defined by
+        column_filter and allow_lexical_overlap is finished.
         """
 
         if not thesaurus_files:
@@ -96,15 +98,15 @@ class Thesaurus(object):
                         continue
 
                     if tokens[0] != FILTERED:
-                        key = _smart_lower(tokens[0], ngram_separator, aggressive_lowercasing)
+                        key = _smart_lower(tokens[0], ngram_separator, lowercasing)
                         dfkey = DocumentFeature.from_string(key)
 
                         if dfkey.type == 'EMPTY' or (not row_filter(key, dfkey)) or len(key) > max_len:
                             # do not load things in the wrong format, they'll get in the way later
                             continue
 
-                        to_insert = [(_smart_lower(word, ngram_separator, aggressive_lowercasing), float(sim))
-                                     for (word, sim) in walk_nonoverlapping_pairs(tokens, 1, max_neighbours)
+                        to_insert = [(_smart_lower(word, ngram_separator, lowercasing), float(sim))
+                                     for (word, sim) in walk_nonoverlapping_pairs(tokens, 1)
                                      if word.lower() != FILTERED and column_filter(word) and float(sim) > sim_threshold]
 
                         if not allow_lexical_overlap:
@@ -112,6 +114,9 @@ class Thesaurus(object):
                             key_tokens = dfkey.tokens
                             to_insert = [(f[0].tokens_as_str(), f[1]) for f in features
                                          if not any(t in key_tokens for t in f[0].tokens)]
+
+                        if len(to_insert) > max_neighbours:
+                            to_insert = to_insert[:max_neighbours]
 
                         if include_self:
                             to_insert.insert(0, (key, 1.0))
@@ -228,11 +233,11 @@ class Thesaurus(object):
 
 
 # END OF CLASS
-def _smart_lower(words_with_pos, separator='_', aggressive_lowercasing=True):
+def _smart_lower(words_with_pos, separator='_', lowercasing=True):
     """
     Lowercase just the words and not their PoS tags
     """
-    if not aggressive_lowercasing:
+    if not lowercasing:
         return words_with_pos
 
     unigrams = words_with_pos.split(separator)
