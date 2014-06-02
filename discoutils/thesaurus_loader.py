@@ -46,6 +46,10 @@ class Thesaurus(object):
         return len(self.d)
 
     @classmethod
+    def from_shelf_readonly(cls, shelf_file_path):
+        return Thesaurus(shelve.open(shelf_file_path, flag='r'))  # read only
+
+    @classmethod
     def from_tsv(cls, thesaurus_files='', sim_threshold=0, include_self=False,
                  lowercasing=False, ngram_separator='_', allow_lexical_overlap=True,
                  row_filter=lambda x, y: True, column_filter=lambda x: True, max_len=50,
@@ -214,7 +218,7 @@ class Thesaurus(object):
 
         return s
 
-    def to_file(self, filename, entry_filter=lambda x: True, row_transform=lambda x: x):
+    def to_tsv(self, filename, entry_filter=lambda x: True, row_transform=lambda x: x):
         """
         Writes this thesaurus to a Byblo-compatible events file like the one it was most likely read from. In the
         process converts all entries to a DocumentFeature.

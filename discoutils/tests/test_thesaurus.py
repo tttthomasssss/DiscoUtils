@@ -56,6 +56,14 @@ def test_disallow_lexical_overlap(thes_without_overlap):
     # check the right neighbour is kept
     assert thes_without_overlap['japanese/J_yen/N'][0] == ('daily/J_mark/N', 0.981391)
 
+@pytest.mark.parametrize('thes', [thesaurus_c(), thes_with_overlap(), thes_without_overlap()])
+def test_from_shelf(thes, tmpdir):
+    filename = str(tmpdir.join('test_shelf'))
+    thes.to_shelf(filename)
+    loaded_thes = Thesaurus.from_shelf_readonly(filename)
+    for k,v in thes.iteritems():
+        assert k in loaded_thes
+        assert v == loaded_thes[k]
 
 def test_allow_lexical_overlap(thes_with_overlap):
     assert len(thes_with_overlap) == 5
@@ -100,17 +108,17 @@ def test_to_dissect_core_space(thesaurus_c):
     _assert_matrix_of_thesaurus_c_is_as_expected(matrix, space.id2row, space.id2column)
 
 
-def test_to_file(thesaurus_c, tmpdir):
+def test_to_tsv(thesaurus_c, tmpdir):
     """
 
     :type thesaurus_c: Thesaurus
     :type tmpdir: py.path.local
     """
     filename = str(tmpdir.join('outfile.txt'))
-    thesaurus_c.to_file(filename)
+    thesaurus_c.to_tsv(filename)
     t1 = Thesaurus.from_tsv([filename])
 
-    # can't just assert t1 == thesaurus_c, because to_file may reorder the columns
+    # can't just assert t1 == thesaurus_c, because to_tsv may reorder the columns
     for k, v in thesaurus_c.iteritems():
         assert k in t1.keys()
         assert set(v) == set(thesaurus_c[k])
