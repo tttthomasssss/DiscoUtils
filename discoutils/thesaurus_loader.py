@@ -50,7 +50,7 @@ class Thesaurus(object):
         return Thesaurus(shelve.open(shelf_file_path, flag='r'))  # read only
 
     @classmethod
-    def from_tsv(cls, thesaurus_files='', sim_threshold=0, include_self=False,
+    def from_tsv(cls, thesaurus_files='', sim_threshold=-1e20, include_self=False,
                  lowercasing=False, ngram_separator='_', allow_lexical_overlap=True,
                  row_filter=lambda x, y: True, column_filter=lambda x: True, max_len=50,
                  max_neighbours=1e8):
