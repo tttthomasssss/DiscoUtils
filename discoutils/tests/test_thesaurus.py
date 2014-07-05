@@ -114,6 +114,14 @@ def test_to_tsv(thesaurus_c, tmpdir):
     :type thesaurus_c: Thesaurus
     :type tmpdir: py.path.local
     """
+    # to_tsv may reorder the columns unless preserve_order=True is passed in
+    # test if preserve_order works as expected
+    filename = str(tmpdir.join('outfile.txt'))
+    thesaurus_c.to_tsv(filename, preserve_order=True)
+    t1 = Thesaurus.from_tsv([filename])
+    assert t1.d == thesaurus_c.d
+
+    # without preserve_order
     filename = str(tmpdir.join('outfile.txt'))
     thesaurus_c.to_tsv(filename)
     t1 = Thesaurus.from_tsv([filename])

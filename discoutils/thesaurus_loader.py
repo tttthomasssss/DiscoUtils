@@ -181,8 +181,8 @@ class Thesaurus(object):
         Converts the vectors held in this object to a scipy sparse matrix
         :return: a tuple containing
             1) the sparse matrix, in which rows correspond to the order of this object's iteritems()
-            2) a sorted list of all features (column labels of the matrix)
-            3) a sorted list of all entries (row labels of the matrix)
+            2) a **sorted** list of all features (column labels of the matrix).
+            3) a list of all entries (row labels of the matrix)
         :rtype: tuple
         """
         from sklearn.feature_extraction import DictVectorizer
@@ -218,7 +218,7 @@ class Thesaurus(object):
 
         return s
 
-    def to_tsv(self, filename, entry_filter=lambda x: True, row_transform=lambda x: x):
+    def to_tsv(self, filename, entry_filter=lambda x: True, row_transform=lambda x: x, preserve_order=False):
         """
         Writes this thesaurus to a Byblo-compatible events file like the one it was most likely read from. In the
         process converts all entries to a DocumentFeature.
@@ -228,11 +228,22 @@ class Thesaurus(object):
         :param row_transform: Callable, any transformation that might need to be done to each entry before converting
          it to a DocumentFeature. This is needed because some entries (e.g. african/J:amod-HEAD:leader) are not
          directly convertible (needs to be african/J leader/N)
+         :param preserve_order: if true, neighbours are written in the order that they appear in. This is required
+         when the thesaurus stores neighbours (as opposed to events/features, which can be written in any order). If
+         this option is set, the row_transform and entry_filter options are ignored. This is just because I'm lazy
         :return: :rtype:
         """
-        mat, cols, rows = self.to_sparse_matrix(row_transform=row_transform)
-        rows = [DocumentFeature.from_string(x) for x in rows]
-        write_vectors_to_disk(mat.tocoo(), rows, cols, filename, entry_filter=entry_filter)
+        if not preserve_order:
+            logging.warn('Not attempting to preserve order of neighbours/features when saving to TSV')
+            mat, cols, rows = self.to_sparse_matrix(row_transform=row_transform)
+            rows = [DocumentFeature.from_string(x) for x in rows]
+            write_vectors_to_disk(mat.tocoo(), rows, cols, filename, entry_filter=entry_filter)
+        else:
+            logging.warn('row_transform and entry_filter options are ignored in order to use preserve_order')
+            with open(filename, 'w') as outfile:
+                for entry, vector in self.d.iteritems():
+                    features_str = '\t'.join(['%s\t%f' % foo for foo in vector])
+                    outfile.write('%s\t%s\n' % (entry, features_str))
         return filename
 
 
