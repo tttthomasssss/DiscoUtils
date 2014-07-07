@@ -43,7 +43,7 @@ class DocumentFeature(object):
             match = iter(match)
             tokens = []
             for (junk, word, pos) in izip_longest(match, match, match):
-                if junk:        # Either too many tokens, or invalid token
+                if junk:  # Either too many tokens, or invalid token
                     raise ValueError(junk)
                 if not word:
                     break
@@ -61,6 +61,27 @@ class DocumentFeature(object):
         DocumentFeature('1-GRAM', ('X', 'Y',)) -> 'X_Y'
         """
         return '_'.join(str(t) for t in self.tokens)
+
+    @classmethod
+    def smart_lower(cls, words_with_pos, separator='_', lowercasing=True):
+        """
+        Lowercase just the words and not their PoS tags
+        """
+        if not lowercasing:
+            return words_with_pos
+
+        unigrams = words_with_pos.split(separator)
+        words = []
+        for unigram in unigrams:
+            try:
+                word, pos = unigram.split('/')
+            except ValueError:
+                # no pos
+                word, pos = words_with_pos, ''
+
+            words.append('/'.join([word.lower(), pos]) if pos else word.lower())
+
+        return separator.join(words)
 
     def __len__(self):
         return len(self.tokens)
@@ -128,7 +149,7 @@ class Token(object):
     def __init__(self, text, pos, index=0, ner='O'):
         self.text = text
         self.pos = pos
-        self.index = index # useful when parsing CONLL
+        self.index = index  # useful when parsing CONLL
         self.ner = ner
 
     def __str__(self):

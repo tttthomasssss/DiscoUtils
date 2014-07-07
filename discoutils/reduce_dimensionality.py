@@ -125,12 +125,14 @@ def do_svd(input_paths, output_prefix,
     if not 1 <= write <= 3:
         raise ValueError('value of parameter write must be 1, 2 or 3')
 
-    thesaurus = Thesaurus.from_tsv(input_paths, aggressive_lowercasing=False)
+    thesaurus = Thesaurus.from_tsv(input_paths, lowercasing=False)
     if not thesaurus:
         raise ValueError('Empty thesaurus %r', input_paths)
     mat, pos_tags, rows, cols = filter_out_infrequent_entries(desired_counts_per_feature_type, thesaurus)
     if apply_to:
-        thes_to_apply_to = Thesaurus.from_tsv(apply_to, aggressive_lowercasing=False, vocabulary=set(cols))
+        cols = set(cols)
+        thes_to_apply_to = Thesaurus.from_tsv(apply_to, lowercasing=False,
+                                              column_filter=lambda foo: foo in cols)
         # get the names of each thesaurus entry
         extra_rows = [x for x in thes_to_apply_to.keys()]
         # vectorize second matrix with the vocabulary (columns) of the first thesaurus to ensure shapes match

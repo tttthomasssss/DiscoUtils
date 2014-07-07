@@ -5,7 +5,7 @@ import scipy.sparse as sp
 from discoutils.tokens import DocumentFeature
 from discoutils.tests.test_dimensionality_reduction import _read_and_strip_lines
 from discoutils.io_utils import write_vectors_to_disk
-from discoutils.tests.test_thesaurus import thesaurus_c
+from discoutils.tests.test_thesaurus import thesaurus_c # this is used, do not remove
 
 
 __author__ = 'mmb28'
@@ -13,7 +13,7 @@ __author__ = 'mmb28'
 
 @pytest.fixture(params=['normal', 'abbreviated', 'empty', 'with_filter', 'with_verb_only_filter'], scope='function')
 def resources(thesaurus_c, request):
-    filter_callable = lambda x: x
+    filter_callable = lambda x: True
     features = ['a/N', 'b/V', 'd/J', 'g/N', 'x/X']
     entries = list(sorted(thesaurus_c.keys()))
 
