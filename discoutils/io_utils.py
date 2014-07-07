@@ -74,11 +74,7 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
         with open(features_path, 'w') as outfile:
             feature_sums = np.array(matrix.tocsr()[accepted_rows].sum(axis=0))[0, :]
             for feature, count in zip(column_index, feature_sums):
-                if count > 0:
-                    # todo is this right? Byblo won't crash with negative feature marginals when using cosine sim
-                    outfile.write('%s\t%f\n' % (feature, count))
-                else:
-                    logging.warn('Feature %s has non-positive count', feature)
+                outfile.write('%s\t%f\n' % (feature, count))
 
 
 def reformat_entries(filename, suffix, function, separator='\t'):
