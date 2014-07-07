@@ -250,7 +250,6 @@ class Vectors(Thesaurus):
                                 max_len=max_len, max_neighbours=max_neighbours)
         return Vectors(th._obj)  # get underlying dict from thesaurus
 
-
     def to_tsv(self, events_path, entries_path='', features_path='',
                entry_filter=lambda x: True, row_transform=lambda x: x):
         """
@@ -266,7 +265,8 @@ class Vectors(Thesaurus):
          directly convertible (needs to be african/J leader/N)
         :return: the file name
         """
-        logging.warn('Not attempting to preserve order of neighbours/features when saving to TSV')
+        # todo converting to a DocumentFeature is silly as any odd entry breaks this method
+        logging.warn('Not attempting to preserve order of features when saving to TSV')
         # mat, cols, rows = self.to_sparse_matrix(row_transform=row_transform)
         rows = [DocumentFeature.from_string(x) for x in self.rows]
         write_vectors_to_disk(self.matrix.tocoo(), rows, self.columns, events_path,
