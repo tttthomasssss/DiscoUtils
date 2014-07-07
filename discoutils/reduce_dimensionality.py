@@ -10,7 +10,7 @@ import numpy as np
 from operator import itemgetter
 from sklearn.decomposition import TruncatedSVD
 from discoutils.tokens import DocumentFeature
-from discoutils.thesaurus_loader import Thesaurus
+from discoutils.thesaurus_loader import Vectors
 from discoutils.io_utils import write_vectors_to_disk
 
 try:
@@ -125,13 +125,13 @@ def do_svd(input_paths, output_prefix,
     if not 1 <= write <= 3:
         raise ValueError('value of parameter write must be 1, 2 or 3')
 
-    thesaurus = Thesaurus.from_tsv(input_paths, lowercasing=False)
+    thesaurus = Vectors.from_tsv(input_paths, lowercasing=False)
     if not thesaurus:
         raise ValueError('Empty thesaurus %r', input_paths)
     mat, pos_tags, rows, cols = filter_out_infrequent_entries(desired_counts_per_feature_type, thesaurus)
     if apply_to:
         cols = set(cols)
-        thes_to_apply_to = Thesaurus.from_tsv(apply_to, lowercasing=False,
+        thes_to_apply_to = Vectors.from_tsv(apply_to, lowercasing=False,
                                               column_filter=lambda foo: foo in cols)
         # get the names of each thesaurus entry
         extra_rows = [x for x in thes_to_apply_to.keys()]

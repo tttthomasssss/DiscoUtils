@@ -4,12 +4,11 @@ import logging
 import shelve
 import numpy
 from discoutils.tokens import DocumentFeature
-from discoutils.class_utils import Wrapper
 from discoutils.collections_utils import walk_nonoverlapping_pairs
 from discoutils.io_utils import write_vectors_to_disk
 
 
-class Thesaurus(Wrapper):
+class Thesaurus(object):
     def __init__(self, d):
 
         """
@@ -26,7 +25,6 @@ class Thesaurus(Wrapper):
         """
         self._obj = d  # do not rename
 
-    __wraps__ = dict
 
     @classmethod
     def from_shelf_readonly(cls, shelf_file_path):
@@ -175,6 +173,43 @@ class Thesaurus(Wrapper):
 
         return mat, self.v.feature_names_, rows
 
+    def __getattr__(self, name):
+        return getattr(self._obj, name)
+
+    def __setitem__(self, key, value):
+        if isinstance(key, DocumentFeature):
+            key = DocumentFeature.tokens_as_str(key)
+        self._obj[key] = value
+
+    def __delitem__(self, key):
+        """
+        Deletes key from the list of entries in the thesaurus and the matrix
+        :param key:
+        :type key:
+        :return:
+        :rtype:
+        """
+        if isinstance(key, DocumentFeature):
+            item = DocumentFeature.tokens_as_str(key)
+
+        del self._obj[key]
+        if hasattr(self, 'matrix'):
+            mask = numpy.ones(self.matrix.shape[0], dtype=bool)
+            mask[self.rows[key]] = False
+            self.matrix = self.matrix[mask, :]
+
+    def __getitem__(self, item):
+        if isinstance(item, DocumentFeature):
+            item = DocumentFeature.tokens_as_str(item)
+        return self._obj[item]
+
+    def __contains__(self, item):
+        if isinstance(item, DocumentFeature):
+            item = DocumentFeature.tokens_as_str(item)
+        return item in self._obj
+
+    def __len__(self):
+        return len(self._obj)
 
 class Vectors(Thesaurus):
     def __init__(self, d):
@@ -193,7 +228,10 @@ class Vectors(Thesaurus):
 
         :param d: a dictionary that serves as a basis
         """
-        self._obj = d  # do not rename
+        self._obj = d  # the underlying data dict. Do NOT RENAME!
+        # the matrix representation of this object
+        self.matrix, self.columns, rows = self.to_sparse_matrix()
+        self.rows = {feature: i for (i, feature) in enumerate(rows)}
 
     @classmethod
     def from_tsv(cls, tsv_files='', sim_threshold=-1e20,
@@ -210,14 +248,17 @@ class Vectors(Thesaurus):
                                 ngram_separator=ngram_separator, allow_lexical_overlap=True,
                                 row_filter=row_filter, column_filter=column_filter,
                                 max_len=max_len, max_neighbours=max_neighbours)
-        return Vectors(th._obj)  # get underlying dict
+        return Vectors(th._obj)  # get underlying dict from thesaurus
 
-    def to_tsv(self, filename, entry_filter=lambda x: True, row_transform=lambda x: x):
+
+    def to_tsv(self, events_path, entries_path='', features_path='',
+               entry_filter=lambda x: True, row_transform=lambda x: x):
         """
-        Writes this thesaurus to a Byblo-compatible events file like the one it was most likely read from. In the
+        Writes this thesaurus to Byblo-compatible file like the one it was most likely read from. In the
         process converts all entries to a DocumentFeature, so all entries must be parsable into one. May reorder the
         features of each entry.
-        :param filename: file to write to
+
+        :param events_file: file to write to
         :param entry_filter: Called for every DocumentFeature that is an entry in this thesaurus. The vector will
          only be written if this callable return true
         :param row_transform: Callable, any transformation that might need to be done to each entry before converting
@@ -226,10 +267,12 @@ class Vectors(Thesaurus):
         :return: the file name
         """
         logging.warn('Not attempting to preserve order of neighbours/features when saving to TSV')
-        mat, cols, rows = self.to_sparse_matrix(row_transform=row_transform)
-        rows = [DocumentFeature.from_string(x) for x in rows]
-        write_vectors_to_disk(mat.tocoo(), rows, cols, filename, entry_filter=entry_filter)
-        return filename
+        # mat, cols, rows = self.to_sparse_matrix(row_transform=row_transform)
+        rows = [DocumentFeature.from_string(x) for x in self.rows]
+        write_vectors_to_disk(self.matrix.tocoo(), rows, self.columns, events_path,
+                              features_path=features_path, entries_path=entries_path,
+                              entry_filter=entry_filter)
+        return events_path
 
     def to_dissect_core_space(self):
         """
@@ -276,4 +319,22 @@ class Vectors(Thesaurus):
                 outfile.write('{}\n'.format(feature))
 
 
+    def get_vector(self, entry):
+        """
+        Returns a vector for the given entry. This differs from self.__getitem__ in that it returns a sparse matrix
+        instead of a list of (feature, count) tuples
+        :param entry: the entry
+        :type entry: str
+        :return: vector for the entry
+        :rtype: scipy.sparse.csr_matrix, or None
+        """
+        try:
+            row = self.rows[entry]
+        except KeyError:
+            return None  # no vector for this
+        return self.matrix[row, :]
+
+
+    def __str__(self):
+        return '[%d vectors]' % len(self)
 
