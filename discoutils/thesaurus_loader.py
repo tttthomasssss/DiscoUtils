@@ -318,7 +318,6 @@ class Vectors(Thesaurus):
             for feature in sorted(columns):
                 outfile.write('{}\n'.format(feature))
 
-
     def get_vector(self, entry):
         """
         Returns a vector for the given entry. This differs from self.__getitem__ in that it returns a sparse matrix

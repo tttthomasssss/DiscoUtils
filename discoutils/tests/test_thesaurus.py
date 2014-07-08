@@ -137,11 +137,11 @@ def test_vectors_to_tsv(vectors_c, tmpdir):
     # these are feature vectors, columns(features) can be reordered
     filename = str(tmpdir.join('outfile.txt'))
     vectors_c.to_tsv(filename)
-    t1 = Vectors.from_tsv([filename])
+    from_disk = Vectors.from_tsv([filename])
 
-    # can't just assert t1 == thesaurus_c, because to_tsv may reorder the columns
+    # can't just assert from_disk == thesaurus_c, because to_tsv may reorder the columns
     for k, v in vectors_c.iteritems():
-        assert k in t1.keys()
+        assert k in from_disk.keys()
         assert set(v) == set(vectors_c[k])
 
 
