@@ -145,6 +145,28 @@ def test_vectors_to_tsv(vectors_c, tmpdir):
         assert set(v) == set(vectors_c[k])
 
 
+def test_get_vector(vectors_c):
+    assert_array_equal([0.5, 0.3, 0., 0.7, 0.],
+                       vectors_c.get_vector('d/J').A.ravel())
+    assert_array_equal([0.3, 0.6, 0.7, 0., 0.9],
+                       vectors_c.get_vector('g/N').A.ravel())
+
+
+def test_loading_unordered_feature_lists(tmpdir):
+    d = {
+        'a/N': [('f1', 1), ('f2', 2), ('f3', 3)],
+        'b/N': [('f3', 3), ('f1', 1), ('f2', 2), ],
+        'c/N': [('f3', 3), ('f2', 2), ('f1', 1)],
+    } # three identical vectors
+    v = Vectors(d)
+    filename = str(tmpdir.join('outfile.txt'))
+    v.to_tsv(filename)
+
+    v1 = v.from_tsv([filename])
+    assert v.rows == v1.rows
+    assert v.columns == v1.columns
+    assert_array_equal(v.matrix.A, v1.matrix.A)
+
 def test_to_dissect_sparse_files(vectors_c, tmpdir):
     """
 
@@ -309,7 +331,7 @@ class TestLoad_thesauri(TestCase):
         def modify():
             from_shelf['some_value'] = ('should not be possible', 0)
 
-        self.assertRaises(DBAccessError, modify)
+        self.assertRaises(Exception, modify)
 
         # tear down
         self.assertTrue(os.path.exists(filename))

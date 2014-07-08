@@ -1,5 +1,6 @@
 from itertools import groupby, chain
 import logging
+from operator import itemgetter
 import numpy as np
 from scipy.sparse import isspmatrix_coo
 
@@ -47,15 +48,18 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
     else:
         raise ValueError('vectors_path: expected str or file-like, got %s' % type(vectors_path))
 
-    for row_num, column_ids_and_values in groupby(matrix_data, lambda x: x[0]):
+    for row_num, column_ids_and_values in groupby(matrix_data, itemgetter(0)):
         entry = row_index[row_num]
         if entry_filter(entry) and (entry not in accepted_entry_counts.keys()):  # guard against duplicated vectors
             accepted_rows.append(row_num)
+            column_ids_and_values = list(column_ids_and_values)
             features_and_counts = [(column_index[x[1]], x[2]) for x in column_ids_and_values]
 
+            vector = matrix.tocsr()[row_num, :].A.ravel()
+            v1 = [foo for foo in sorted(features_and_counts, key=itemgetter(0))]
             outfile.write('%s\t%s\n' % (
                 entry.tokens_as_str(),
-                '\t'.join(map(str, chain.from_iterable(features_and_counts)))
+                '\t'.join(map(str, chain.from_iterable(v1)))
             ))
             accepted_entry_counts[entry] = sum(x[1] for x in features_and_counts)
         if row_num % 5000 == 0 and outfile:
