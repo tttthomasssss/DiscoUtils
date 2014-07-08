@@ -268,7 +268,7 @@ class Vectors(Thesaurus):
         # todo converting to a DocumentFeature is silly as any odd entry breaks this method
         logging.warn('Not attempting to preserve order of features when saving to TSV')
         # mat, cols, rows = self.to_sparse_matrix(row_transform=row_transform)
-        rows = [DocumentFeature.from_string(x) for x in self.rows]
+        rows = {i: DocumentFeature.from_string(feat) for (feat, i) in self.rows.iteritems()}
         write_vectors_to_disk(self.matrix.tocoo(), rows, self.columns, events_path,
                               features_path=features_path, entries_path=entries_path,
                               entry_filter=entry_filter)

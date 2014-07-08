@@ -11,10 +11,12 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
                           entry_filter=lambda x: True):
     """
     Converts a matrix and its associated row/column indices to a Byblo compatible entries/features/event files,
-    possibly applying a tranformation function to each entry
+    possibly applying a tranformation function to each entry. The features of each entry are written in sorted order
+
     :param matrix: data matrix of size (n_entries, n_features) in scipy.sparse.coo format
     :type matrix: scipy.sparse.coo_matrix
-    :param row_index: sorted list of DocumentFeature-s representing entry names
+    :param row_index: a collection of DocumentFeature-s representing entry names. `row_index[N]` should return the
+     feature whose vector is stored in row N of `matrix`
     :type row_index: thesisgenerator.plugins.tokenizer.DocumentFeature
     :param column_index: sorted list of feature names
     :param features_path: str, where to write the Byblo features file. If the entry_filter removes all entries
@@ -52,14 +54,10 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
         entry = row_index[row_num]
         if entry_filter(entry) and (entry not in accepted_entry_counts.keys()):  # guard against duplicated vectors
             accepted_rows.append(row_num)
-            column_ids_and_values = list(column_ids_and_values)
             features_and_counts = [(column_index[x[1]], x[2]) for x in column_ids_and_values]
-
-            vector = matrix.tocsr()[row_num, :].A.ravel()
-            v1 = [foo for foo in sorted(features_and_counts, key=itemgetter(0))]
             outfile.write('%s\t%s\n' % (
                 entry.tokens_as_str(),
-                '\t'.join(map(str, chain.from_iterable(v1)))
+                '\t'.join(map(str, chain.from_iterable(features_and_counts)))
             ))
             accepted_entry_counts[entry] = sum(x[1] for x in features_and_counts)
         if row_num % 5000 == 0 and outfile:
