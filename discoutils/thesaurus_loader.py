@@ -176,6 +176,22 @@ class Thesaurus(object):
     def __getattr__(self, name):
         return getattr(self._obj, name)
 
+    def __setstate__(self, d):
+        """
+        Defining this explicitly is required for pickling to work. If the constructor does work other than saving
+        the provided parameters to field pickling will not work, because __init__ is not called upon unpickling.
+        The fiels computed by the constructor will therefore not exist and the state of the class will not be restored
+        fully. However, the state of the class is contained fully in the parameter of this method, we just need to
+        save it, as the constructor would have done had it been invoked.
+
+        In this class the issue manifests in a weird way. __getattr__ may be called during unpicling, before the
+        class invariant is established (as the constructor isn't called). This class' __getattr__ delegates to
+        self._obj, which does not exist, so __getattr__ is called again!
+
+        See https://docs.python.org/2/library/pickle.html#pickle-inst
+        """
+        self.__dict__.update(d)
+
     def __setitem__(self, key, value):
         if isinstance(key, DocumentFeature):
             key = DocumentFeature.tokens_as_str(key)
@@ -210,6 +226,7 @@ class Thesaurus(object):
 
     def __len__(self):
         return len(self._obj)
+
 
 class Vectors(Thesaurus):
     def __init__(self, d):
