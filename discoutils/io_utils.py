@@ -52,16 +52,17 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
 
     for row_num, column_ids_and_values in groupby(matrix_data, itemgetter(0)):
         entry = row_index[row_num]
-        if entry_filter(entry) and (entry not in accepted_entry_counts.keys()):  # guard against duplicated vectors
-            accepted_rows.append(row_num)
-            features_and_counts = [(column_index[x[1]], x[2]) for x in column_ids_and_values]
-            outfile.write('%s\t%s\n' % (
-                entry.tokens_as_str(),
-                '\t'.join(map(str, chain.from_iterable(features_and_counts)))
-            ))
-            accepted_entry_counts[entry] = sum(x[1] for x in features_and_counts)
-        if row_num % 5000 == 0 and outfile:
-            logging.info('Processed %d vectors', row_num)
+        if entry_filter(entry):
+            if entry not in accepted_entry_counts:  # guard against duplicated vectors
+                accepted_rows.append(row_num)
+                features_and_counts = [(column_index[x[1]], x[2]) for x in column_ids_and_values]
+                outfile.write('%s\t%s\n' % (
+                    entry.tokens_as_str(),
+                    '\t'.join(map(str, chain.from_iterable(features_and_counts)))
+                ))
+                accepted_entry_counts[entry] = sum(x[1] for x in features_and_counts)
+            if row_num % 5000 == 0 and outfile:
+                logging.info('Processed %d vectors', row_num)
 
     outfile.close()
 
