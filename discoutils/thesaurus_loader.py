@@ -34,7 +34,7 @@ class Thesaurus(object):
     def from_tsv(cls, tsv_files='', sim_threshold=0, include_self=False,
                  lowercasing=False, ngram_separator='_', allow_lexical_overlap=True,
                  row_filter=lambda x, y: True, column_filter=lambda x: True, max_len=50,
-                 max_neighbours=1e8):
+                 max_neighbours=1e8, merge_duplicates=False):
         """
         Create a Thesaurus by parsing a Byblo-compatible TSV files (events or sims).
         If duplicate values are encoutered during parsing, only the latest will be kept.
@@ -59,6 +59,8 @@ class Thesaurus(object):
         :param max_len: maximum length (in characters) of permissible **entries**. Longer entries are ignored.
         :param max_neighbours: maximum neighbours per entry. This is applied AFTER the filtering defined by
         column_filter and allow_lexical_overlap is finished.
+        :param merge_duplicates: whether to raise en error if multiple entries exist, or concatenate/add them together.
+        The former is appropriate for `Thesaurus`, and the latter for `Vectors`
         """
 
         if not tsv_files:
@@ -108,19 +110,16 @@ class Thesaurus(object):
                         # the steps above may filter out all neighbours of an entry. if this happens,
                         # do not bother adding it
                         if len(to_insert) > 0:
-
-                            if key in to_return:
-                                # todo this better not be a neighbours file, merging doesn't work there
-                                logging.warn('Multiple entries for "%s" found. Merging.' % tokens[0])
-                                c = Counter(dict(to_return[key]))
-                                c.update(dict(to_insert))
-                                to_return[key] = [(k, v) for k, v in c.iteritems()]
+                            if key in to_return: # this is a duplicate entry, merge it or raise an error
+                                if merge_duplicates:
+                                    logging.warn('Multiple entries for "%s" found. Merging.', tokens[0])
+                                    c = Counter(dict(to_return[key]))
+                                    c.update(dict(to_insert))
+                                    to_return[key] = [(k, v) for k, v in c.iteritems()]
+                                else:
+                                    raise ValueError('Multiple entries for "%s" found.' % tokens[0])
                             else:
                                 to_return[key] = to_insert
-
-                                # note- do not attempt to lowercase if the thesaurus
-                                # has not already been lowercased- may result in
-                                # multiple neighbour lists for the same entry
         return Thesaurus(to_return)
 
     def to_shelf(self, filename):
@@ -242,6 +241,7 @@ class Vectors(Thesaurus):
          - removed allow_lexical_overlap and include_self parameters. It makes no sense to alter the features
          of an entry, but it is acceptable to pick and choose neighbours.
          - changed default value of sim_threshold to a very low value, for the same reason.
+         - changed default value of merge_duplicates
 
         :param d: a dictionary that serves as a basis
         """
@@ -255,7 +255,8 @@ class Vectors(Thesaurus):
                  lowercasing=False, ngram_separator='_',
                  row_filter=lambda x, y: True,
                  column_filter=lambda x: True,
-                 max_len=50, max_neighbours=1e8):
+                 max_len=50, max_neighbours=1e8,
+                 merge_duplicates=True):
         """
         Changes the default value of the sim_threshold parameter of super. Features can have any value, including
         negative (especially when working with neural embeddings).
@@ -264,7 +265,8 @@ class Vectors(Thesaurus):
         th = Thesaurus.from_tsv(tsv_files=tsv_files, sim_threshold=sim_threshold,
                                 ngram_separator=ngram_separator, allow_lexical_overlap=True,
                                 row_filter=row_filter, column_filter=column_filter,
-                                max_len=max_len, max_neighbours=max_neighbours)
+                                max_len=max_len, max_neighbours=max_neighbours,
+                                merge_duplicates=merge_duplicates)
         return Vectors(th._obj)  # get underlying dict from thesaurus
 
     def to_tsv(self, events_path, entries_path='', features_path='',
