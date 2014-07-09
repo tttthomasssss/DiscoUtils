@@ -31,7 +31,7 @@ class Thesaurus(object):
         return Thesaurus(shelve.open(shelf_file_path, flag='r'))  # read only
 
     @classmethod
-    def from_tsv(cls, tsv_files='', sim_threshold=0, include_self=False,
+    def from_tsv(cls, tsv_file, sim_threshold=0, include_self=False,
                  lowercasing=False, ngram_separator='_', allow_lexical_overlap=True,
                  row_filter=lambda x, y: True, column_filter=lambda x: True, max_len=50,
                  max_neighbours=1e8, merge_duplicates=False):
@@ -39,8 +39,8 @@ class Thesaurus(object):
         Create a Thesaurus by parsing a Byblo-compatible TSV files (events or sims).
         If duplicate values are encoutered during parsing, only the latest will be kept.
 
-        :param tsv_files: list or tuple of file paths to parse
-        :type tsv_files: list
+        :param tsv_file: path to input TSV file
+        :type tsv_file:  str
         :param sim_threshold: min similarity between an entry and its neighbour for the neighbour to be included
         :type sim_threshold: float
         :param include_self: whether to include self as nearest neighbour.
@@ -63,63 +63,61 @@ class Thesaurus(object):
         The former is appropriate for `Thesaurus`, and the latter for `Vectors`
         """
 
-        if not tsv_files:
-            logging.warn("No thesaurus specified")
-            return {}
+        if not tsv_file:
+            raise ValueError("No thesaurus specified")
 
         to_return = dict()
-        for path in tsv_files:
-            logging.info('Loading thesaurus %s from disk', path)
-            if not allow_lexical_overlap:
-                logging.warn('DISALLOWING LEXICAL OVERLAP')
+        logging.info('Loading thesaurus %s from disk', tsv_file)
+        if not allow_lexical_overlap:
+            logging.warn('DISALLOWING LEXICAL OVERLAP')
 
-            FILTERED = '___FILTERED___'.lower()
-            with open(path) as infile:
-                for line in infile:
-                    tokens = line.strip().split('\t')
-                    if len(tokens) % 2 == 0:
-                        # must have an odd number of things, one for the entry
-                        # and pairs for (neighbour, similarity)
-                        logging.warn('Dodgy line in thesaurus file: %s\n %s', path, line)
+        FILTERED = '___FILTERED___'.lower()
+        with open(tsv_file) as infile:
+            for line in infile:
+                tokens = line.strip().split('\t')
+                if len(tokens) % 2 == 0:
+                    # must have an odd number of things, one for the entry
+                    # and pairs for (neighbour, similarity)
+                    logging.warn('Dodgy line in thesaurus file: %s\n %s', tsv_file, line)
+                    continue
+
+                if tokens[0] != FILTERED:
+                    key = DocumentFeature.smart_lower(tokens[0], ngram_separator, lowercasing)
+                    dfkey = DocumentFeature.from_string(key)
+
+                    if dfkey.type == 'EMPTY' or (not row_filter(key, dfkey)) or len(key) > max_len:
+                        # do not load things in the wrong format, they'll get in the way later
                         continue
 
-                    if tokens[0] != FILTERED:
-                        key = DocumentFeature.smart_lower(tokens[0], ngram_separator, lowercasing)
-                        dfkey = DocumentFeature.from_string(key)
+                    to_insert = [(DocumentFeature.smart_lower(word, ngram_separator, lowercasing), float(sim))
+                                 for (word, sim) in walk_nonoverlapping_pairs(tokens, 1)
+                                 if word.lower() != FILTERED and column_filter(word) and float(sim) > sim_threshold]
 
-                        if dfkey.type == 'EMPTY' or (not row_filter(key, dfkey)) or len(key) > max_len:
-                            # do not load things in the wrong format, they'll get in the way later
-                            continue
+                    if not allow_lexical_overlap:
+                        features = [(DocumentFeature.from_string(x[0]), x[1]) for x in to_insert]
+                        key_tokens = dfkey.tokens
+                        to_insert = [(f[0].tokens_as_str(), f[1]) for f in features
+                                     if not any(t in key_tokens for t in f[0].tokens)]
 
-                        to_insert = [(DocumentFeature.smart_lower(word, ngram_separator, lowercasing), float(sim))
-                                     for (word, sim) in walk_nonoverlapping_pairs(tokens, 1)
-                                     if word.lower() != FILTERED and column_filter(word) and float(sim) > sim_threshold]
+                    if len(to_insert) > max_neighbours:
+                        to_insert = to_insert[:max_neighbours]
 
-                        if not allow_lexical_overlap:
-                            features = [(DocumentFeature.from_string(x[0]), x[1]) for x in to_insert]
-                            key_tokens = dfkey.tokens
-                            to_insert = [(f[0].tokens_as_str(), f[1]) for f in features
-                                         if not any(t in key_tokens for t in f[0].tokens)]
+                    if include_self:
+                        to_insert.insert(0, (key, 1.0))
 
-                        if len(to_insert) > max_neighbours:
-                            to_insert = to_insert[:max_neighbours]
-
-                        if include_self:
-                            to_insert.insert(0, (key, 1.0))
-
-                        # the steps above may filter out all neighbours of an entry. if this happens,
-                        # do not bother adding it
-                        if len(to_insert) > 0:
-                            if key in to_return: # this is a duplicate entry, merge it or raise an error
-                                if merge_duplicates:
-                                    logging.warn('Multiple entries for "%s" found. Merging.', tokens[0])
-                                    c = Counter(dict(to_return[key]))
-                                    c.update(dict(to_insert))
-                                    to_return[key] = [(k, v) for k, v in c.iteritems()]
-                                else:
-                                    raise ValueError('Multiple entries for "%s" found.' % tokens[0])
+                    # the steps above may filter out all neighbours of an entry. if this happens,
+                    # do not bother adding it
+                    if len(to_insert) > 0:
+                        if key in to_return: # this is a duplicate entry, merge it or raise an error
+                            if merge_duplicates:
+                                logging.warn('Multiple entries for "%s" found. Merging.', tokens[0])
+                                c = Counter(dict(to_return[key]))
+                                c.update(dict(to_insert))
+                                to_return[key] = [(k, v) for k, v in c.iteritems()]
                             else:
-                                to_return[key] = to_insert
+                                raise ValueError('Multiple entries for "%s" found.' % tokens[0])
+                        else:
+                            to_return[key] = to_insert
         return Thesaurus(to_return)
 
     def to_shelf(self, filename):
@@ -251,7 +249,7 @@ class Vectors(Thesaurus):
         self.rows = {feature: i for (i, feature) in enumerate(rows)}
 
     @classmethod
-    def from_tsv(cls, tsv_files='', sim_threshold=-1e20,
+    def from_tsv(cls, tsv_file, sim_threshold=-1e20,
                  lowercasing=False, ngram_separator='_',
                  row_filter=lambda x, y: True,
                  column_filter=lambda x: True,
@@ -262,7 +260,7 @@ class Vectors(Thesaurus):
         negative (especially when working with neural embeddings).
         :rtype: Vectors
         """
-        th = Thesaurus.from_tsv(tsv_files=tsv_files, sim_threshold=sim_threshold,
+        th = Thesaurus.from_tsv(tsv_file, sim_threshold=sim_threshold,
                                 ngram_separator=ngram_separator, allow_lexical_overlap=True,
                                 row_filter=row_filter, column_filter=column_filter,
                                 max_len=max_len, max_neighbours=max_neighbours,

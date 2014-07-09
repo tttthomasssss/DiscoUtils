@@ -17,7 +17,7 @@ __author__ = 'mmb28'
 
 @pytest.fixture
 def thesaurus_c():
-    return Thesaurus.from_tsv(tsv_files=['discoutils/tests/resources/exp0-0c.strings'],
+    return Thesaurus.from_tsv('discoutils/tests/resources/exp0-0c.strings',
                               sim_threshold=0,
                               include_self=False,
                               ngram_separator='_')
@@ -25,14 +25,14 @@ def thesaurus_c():
 
 @pytest.fixture
 def vectors_c():
-    return Vectors.from_tsv(tsv_files=['discoutils/tests/resources/exp0-0c.strings'],
+    return Vectors.from_tsv('discoutils/tests/resources/exp0-0c.strings',
                             sim_threshold=0,
                             ngram_separator='_')
 
 
 @pytest.fixture
 def thes_without_overlap():
-    return Thesaurus.from_tsv(tsv_files=['discoutils/tests/resources/lexical-overlap.txt'],
+    return Thesaurus.from_tsv('discoutils/tests/resources/lexical-overlap.txt',
                               sim_threshold=0,
                               ngram_separator='_',
                               allow_lexical_overlap=False)
@@ -40,7 +40,7 @@ def thes_without_overlap():
 
 @pytest.fixture
 def thes_with_overlap():
-    return Thesaurus.from_tsv(tsv_files=['discoutils/tests/resources/lexical-overlap.txt'],
+    return Thesaurus.from_tsv('discoutils/tests/resources/lexical-overlap.txt',
                               sim_threshold=0,
                               ngram_separator='_',
                               allow_lexical_overlap=True)
@@ -124,7 +124,7 @@ def test_thesaurus_to_tsv(thesaurus_c, tmpdir):
     # test columns(neighbours) are not reordered by Thesaurus
     filename = str(tmpdir.join('outfile.txt'))
     thesaurus_c.to_tsv(filename)
-    t1 = Thesaurus.from_tsv([filename])
+    t1 = Thesaurus.from_tsv(filename)
     assert t1._obj == thesaurus_c._obj
 
 
@@ -137,7 +137,7 @@ def test_vectors_to_tsv(vectors_c, tmpdir):
     # these are feature vectors, columns(features) can be reordered
     filename = str(tmpdir.join('outfile.txt'))
     vectors_c.to_tsv(filename)
-    from_disk = Vectors.from_tsv([filename])
+    from_disk = Vectors.from_tsv(filename)
 
     # can't just assert from_disk == thesaurus_c, because to_tsv may reorder the columns
     for k, v in vectors_c.iteritems():
@@ -162,7 +162,7 @@ def test_loading_unordered_feature_lists(tmpdir):
     filename = str(tmpdir.join('outfile.txt'))
     v.to_tsv(filename)
 
-    v1 = v.from_tsv([filename])
+    v1 = v.from_tsv(filename)
     assert v.rows == v1.rows
     assert v.columns == v1.columns
     assert_array_equal(v.matrix.A, v1.matrix.A)
@@ -201,7 +201,7 @@ def test_to_dissect_sparse_files(vectors_c, tmpdir):
 
 def test_load_with_column_filter():
     # test if constraining the vocabulary a bit correctly drops columns
-    t = Thesaurus.from_tsv(tsv_files=['discoutils/tests/resources/exp0-0c.strings'],
+    t = Thesaurus.from_tsv('discoutils/tests/resources/exp0-0c.strings',
                            column_filter=lambda x: x in {'a/N', 'b/V', 'd/J', 'g/N'})
     expected_matrix = np.array([
         [0.1, 0., 0.2, 0.8],  # ab
@@ -216,7 +216,7 @@ def test_load_with_column_filter():
     np.testing.assert_array_equal(expected_matrix.sum(axis=0)[np.newaxis], mat.sum(axis=0))
 
     # test if severely constraining the vocabulary a bit correctly drops columns AND rows
-    t = Thesaurus.from_tsv(tsv_files=['discoutils/tests/resources/exp0-0c.strings'],
+    t = Thesaurus.from_tsv('discoutils/tests/resources/exp0-0c.strings',
                            column_filter=lambda x: x in {'x/X'})
     mat, cols, rows = t.to_sparse_matrix()
     assert set(cols) == {'x/X'}
@@ -225,7 +225,7 @@ def test_load_with_column_filter():
 
 def test_load_with_row_filter():
     # test if constraining the vocabulary a bit correctly drops columns
-    t = Thesaurus.from_tsv(tsv_files=['discoutils/tests/resources/exp0-0c.strings'],
+    t = Thesaurus.from_tsv('discoutils/tests/resources/exp0-0c.strings',
                            row_filter=lambda x, y: x in {'a/N', 'd/J', 'g/N'})
     expected_matrix = np.array([
         [0., 0.1, 0.5, 0.3, 0.],  # a
@@ -239,7 +239,7 @@ def test_load_with_row_filter():
 
 
 def test_load_with_max_num_neighbours():
-    t = Thesaurus.from_tsv(tsv_files=['discoutils/tests/resources/exp0-0c.strings'],
+    t = Thesaurus.from_tsv('discoutils/tests/resources/exp0-0c.strings',
                            max_neighbours=1)
     assert all(len(neigh) == 1 for neigh in t.values())
     mat, cols, rows = t.to_sparse_matrix()
@@ -249,7 +249,7 @@ def test_load_with_max_num_neighbours():
 
 def test_max_num_neighbours_and_no_lexical_overlap():
     # max_neighbours filtering should kick in after lexical overlap filtering
-    t = Thesaurus.from_tsv(tsv_files=['discoutils/tests/resources/exp0-0d.strings'],
+    t = Thesaurus.from_tsv('discoutils/tests/resources/exp0-0d.strings',
                            allow_lexical_overlap=False)
     assert len(t) == 4
     assert len(t['trade/N_law/N']) == 1
@@ -257,7 +257,7 @@ def test_max_num_neighbours_and_no_lexical_overlap():
     assert len(t['important/J_country/N']) == 5
     assert len(t['foreign/J_line/N']) == 3
 
-    t = Thesaurus.from_tsv(tsv_files=['discoutils/tests/resources/exp0-0d.strings'],
+    t = Thesaurus.from_tsv('discoutils/tests/resources/exp0-0d.strings',
                            allow_lexical_overlap=False,
                            max_neighbours=1)
     assert len(t) == 4
@@ -267,11 +267,11 @@ def test_max_num_neighbours_and_no_lexical_overlap():
     assert len(t['important/J_country/N']) == 1
     assert len(t['foreign/J_line/N']) == 1
 
-    t = Thesaurus.from_tsv(tsv_files=['discoutils/tests/resources/exp0-0d.strings'])
+    t = Thesaurus.from_tsv('discoutils/tests/resources/exp0-0d.strings')
     assert t['trade/N_law/N'][0][0] == 'law/N'
     assert t['trade/N_law/N'][4][0] == 'product/N_line/N'
 
-    t = Thesaurus.from_tsv(tsv_files=['discoutils/tests/resources/exp0-0d.strings'],
+    t = Thesaurus.from_tsv('discoutils/tests/resources/exp0-0d.strings',
                            allow_lexical_overlap=True,
                            max_neighbours=1)
     assert t['trade/N_law/N'][0][0] == 'law/N'
@@ -285,28 +285,16 @@ class TestLoad_thesauri(TestCase):
         for processing
         """
 
-        self.params = {
-            'tsv_files': ['discoutils/tests/resources/exp0-0a.strings'],
-            'sim_threshold': 0,
-            # 'k': 10,
-            'include_self': False
-        }
-        self.thesaurus = Thesaurus.from_tsv(**self.params)
+        self.tsv_file = 'discoutils/tests/resources/exp0-0a.strings'
+        self.params = {'sim_threshold': 0, 'include_self': False }
+        self.thesaurus = Thesaurus.from_tsv(self.tsv_file, **self.params)
 
     def _reload_thesaurus(self):
-        self.thesaurus = Thesaurus.from_tsv(**self.params)
+        self.thesaurus = Thesaurus.from_tsv(self.tsv_file, **self.params)
 
-    def test_empty_thesaurus(self):
-        self.params['tsv_files'] = []
-        self._reload_thesaurus()
-        self._reload_and_assert(0, 0)
-
-        # should raise KeyError for unknown tokens
-        with self.assertRaises(KeyError):
-            self.thesaurus['kasdjhfka']
 
     def _reload_and_assert(self, entry_count, neighbour_count):
-        th = Thesaurus.from_tsv(**self.params)
+        th = Thesaurus.from_tsv(self.tsv_file, **self.params)
         all_neigh = [x for v in th.values() for x in v]
         self.assertEqual(len(th), entry_count)
         self.assertEqual(len(all_neigh), neighbour_count)
@@ -315,6 +303,11 @@ class TestLoad_thesauri(TestCase):
     def test_from_dict(self):
         from_dict = Thesaurus(self.thesaurus._obj)
         self.assertDictEqual(self.thesaurus._obj, from_dict._obj)
+
+        # should raise KeyError for unknown tokens
+        with self.assertRaises(KeyError):
+            self.thesaurus['kasdjhfka']
+
 
     def test_from_shelved_dict(self):
         filename = 'thesaurus_unit_tests.tmp'

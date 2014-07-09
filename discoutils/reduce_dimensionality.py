@@ -100,22 +100,22 @@ def _write_to_disk(reduced_mat, method, prefix, rows):
     #    pickle.dump(method, outfile)
 
 
-def do_svd(input_paths, output_prefix,
+def do_svd(input_path, output_prefix,
            desired_counts_per_feature_type=[('N', 8), ('V', 4), ('J', 4), ('RB', 2), ('AN', 2)],
-           reduce_to=[3, 10, 15], apply_to=[], write=3):
+           reduce_to=[3, 10, 15], apply_to=None, write=3):
     """
 
     Performs truncated SVD. A copy of the trained sklearn SVD estimator will be also be saved
 
-    :param input_paths: list of files containing vectors in TSV format. All vectors will be reduced together.
-    :type input_paths: list
+    :param input_path: list of files containing vectors in TSV format. All vectors will be reduced together.
+    :type input_path: list
     :param output_prefix: Where to output the reduced files. An extension will be added.
     :param desired_counts_per_feature_type: how many entries to keep of each DocumentFeature type, by frequency. This
      is the PoS tag for unigram features and the feature type otherwise. For instance, pass in [('N', 2), ('AN', 0)] to
     select 2 unigrams of PoS N and 0 bigrams of type adjective-noun. Types that are not explicitly given a positive
     desired count are treated as if the desired count is 0.
     :param reduce_to: list of integers, what dimensionalities to reduce to
-    :param apply_to: list of file paths. After SVD has been trained on input_paths, it can be applied to
+    :param apply_to: a file path. After SVD has been trained on input_path, it can be applied to
     apply_to. Output will be writen to the same file
     :param write: Once SVD is trained on A and applied to B, output either A, B or vstack(A, B). Use values 0,
     1, and 2 respectively. Default is 3.
@@ -125,9 +125,9 @@ def do_svd(input_paths, output_prefix,
     if not 1 <= write <= 3:
         raise ValueError('value of parameter write must be 1, 2 or 3')
 
-    thesaurus = Vectors.from_tsv(input_paths, lowercasing=False)
+    thesaurus = Vectors.from_tsv(input_path, lowercasing=False)
     if not thesaurus:
-        raise ValueError('Empty thesaurus %r', input_paths)
+        raise ValueError('Empty thesaurus %r', input_path)
     mat, pos_tags, rows, cols = filter_out_infrequent_entries(desired_counts_per_feature_type, thesaurus)
     if apply_to:
         cols = set(cols)
