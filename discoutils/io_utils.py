@@ -11,7 +11,7 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
                           entry_filter=lambda x: True):
     """
     Converts a matrix and its associated row/column indices to a Byblo compatible entries/features/event files,
-    possibly applying a tranformation function to each entry. The features of each entry are written in sorted order
+    possibly applying a tranformation function to each entry.
 
     :param matrix: data matrix of size (n_entries, n_features) in scipy.sparse.coo format
     :type matrix: scipy.sparse.coo_matrix
