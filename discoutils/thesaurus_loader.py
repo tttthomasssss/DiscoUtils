@@ -9,7 +9,7 @@ from discoutils.io_utils import write_vectors_to_disk
 
 
 class Thesaurus(object):
-    def __init__(self, d):
+    def __init__(self, d, immutable=True):
 
         """
          A container that can read Byblo-formatted  sims files. Each entry can be of the form
@@ -22,8 +22,10 @@ class Thesaurus(object):
 
         :param d: a dictionary that serves as a basis. All magic method call on `Thesaurus` objects are forwarded
         to this dict so users can think of this class as a normal dict.
+        :param immutable: if true, Thesaurus['a'] = 1 will raise a ValueError
         """
         self._obj = d  # do not rename
+        self.immutable = immutable
 
 
     @classmethod
@@ -34,7 +36,7 @@ class Thesaurus(object):
     def from_tsv(cls, tsv_file, sim_threshold=0, include_self=False,
                  lowercasing=False, ngram_separator='_', allow_lexical_overlap=True,
                  row_filter=lambda x, y: True, column_filter=lambda x: True, max_len=50,
-                 max_neighbours=1e8, merge_duplicates=False):
+                 max_neighbours=1e8, merge_duplicates=False, immutable=True):
         """
         Create a Thesaurus by parsing a Byblo-compatible TSV files (events or sims).
         If duplicate values are encoutered during parsing, only the latest will be kept.
@@ -108,7 +110,7 @@ class Thesaurus(object):
                     # the steps above may filter out all neighbours of an entry. if this happens,
                     # do not bother adding it
                     if len(to_insert) > 0:
-                        if key in to_return: # this is a duplicate entry, merge it or raise an error
+                        if key in to_return:  # this is a duplicate entry, merge it or raise an error
                             if merge_duplicates:
                                 logging.warn('Multiple entries for "%s" found. Merging.', tokens[0])
                                 c = Counter(dict(to_return[key]))
@@ -118,7 +120,7 @@ class Thesaurus(object):
                                 raise ValueError('Multiple entries for "%s" found.' % tokens[0])
                         else:
                             to_return[key] = to_insert
-        return Thesaurus(to_return)
+        return Thesaurus(to_return, immutable=immutable)
 
     def to_shelf(self, filename):
         """
@@ -190,6 +192,8 @@ class Thesaurus(object):
         self.__dict__.update(d)
 
     def __setitem__(self, key, value):
+        if self.immutable:
+            raise ValueError('This object is immutable')
         if isinstance(key, DocumentFeature):
             key = DocumentFeature.tokens_as_str(key)
         self._obj[key] = value
@@ -222,11 +226,14 @@ class Thesaurus(object):
         return item in self._obj
 
     def __len__(self):
-        return len(self._obj)
+        if not hasattr(self, 'cached_len'):
+            # if self._obj is a shelve object, calling its __len__ takes forever
+            self.cached_len = len(self._obj)
+        return self.cached_len
 
 
 class Vectors(Thesaurus):
-    def __init__(self, d):
+    def __init__(self, d, immutable=True):
         """
         A Thesaurus extension for storing feature vectors. Provides extra methods, e.g. dissect integration. Each
         entry can be of the form
@@ -244,6 +251,7 @@ class Vectors(Thesaurus):
         :param d: a dictionary that serves as a basis
         """
         self._obj = d  # the underlying data dict. Do NOT RENAME!
+        self.immutable = immutable
         # the matrix representation of this object
         self.matrix, self.columns, rows = self.to_sparse_matrix()
         self.rows = {feature: i for (i, feature) in enumerate(rows)}
@@ -254,7 +262,7 @@ class Vectors(Thesaurus):
                  row_filter=lambda x, y: True,
                  column_filter=lambda x: True,
                  max_len=50, max_neighbours=1e8,
-                 merge_duplicates=True):
+                 merge_duplicates=True, immutable=True):
         """
         Changes the default value of the sim_threshold parameter of super. Features can have any value, including
         negative (especially when working with neural embeddings).
@@ -264,7 +272,7 @@ class Vectors(Thesaurus):
                                 ngram_separator=ngram_separator, allow_lexical_overlap=True,
                                 row_filter=row_filter, column_filter=column_filter,
                                 max_len=max_len, max_neighbours=max_neighbours,
-                                merge_duplicates=merge_duplicates)
+                                merge_duplicates=merge_duplicates, immutable=immutable)
         return Vectors(th._obj)  # get underlying dict from thesaurus
 
     def to_tsv(self, events_path, entries_path='', features_path='',

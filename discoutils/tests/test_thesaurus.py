@@ -318,8 +318,6 @@ class TestLoad_thesauri(TestCase):
         for k, v in self.thesaurus.iteritems():
             self.assertEqual(self.thesaurus[k], from_shelf[k])
 
-        # check mutability
-        self.thesaurus['some_value'] = ('should be possible', 0)
 
         def modify():
             from_shelf['some_value'] = ('should not be possible', 0)
