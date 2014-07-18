@@ -148,7 +148,8 @@ class Thesaurus(object):
 
     def to_sparse_matrix(self, row_transform=None, dtype=numpy.float):
         """
-        Converts the vectors held in this object to a scipy sparse matrix.
+        Converts the vectors held in this object to a scipy sparse matrix. Raises a ValueError if
+        the thesaurus is empty
 
         WARNING: This method doesn't make much sense for a Thesaurus and belongs in Vectors. I'm leaving it
         here as some existing Thesaurus tests rely on it.
