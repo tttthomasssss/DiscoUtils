@@ -2,7 +2,11 @@ from collections import Counter
 
 __author__ = 'miroslavbatchkarov'
 from discoutils.find_all_NPs import go_get_NPs, go_get_vectors
-from cStringIO import StringIO
+
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from io import StringIO
 
 
 def test_find_all_NPs():

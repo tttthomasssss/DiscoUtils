@@ -43,8 +43,8 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
     accepted_rows = []
 
     logging.info('Writing events to %s', vectors_path)
-    if isinstance(vectors_path, str) or isinstance(vectors_path, unicode):
-        outfile = open(vectors_path, 'wb')
+    if isinstance(vectors_path, str) or isinstance(vectors_path, bytes):
+        outfile = open(vectors_path, 'w')
     elif hasattr(vectors_path, 'write'):
         outfile = vectors_path
     else:
@@ -69,7 +69,7 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
     if entries_path and accepted_entry_counts:
         logging.info('Writing entries to %s', entries_path)
         with open(entries_path, 'w') as outfile:
-            for entry, count in accepted_entry_counts.iteritems():
+            for entry, count in accepted_entry_counts.items():
                 outfile.write('%s\t%f\n' % (entry.tokens_as_str(), count))
 
     if features_path and accepted_rows:  # guard against empty files

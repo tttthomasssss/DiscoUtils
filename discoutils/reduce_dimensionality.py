@@ -51,7 +51,7 @@ def filter_out_infrequent_entries(desired_counts_per_feature_type, thesaurus):
                      sum(row_of_current_pos), desired_pos)
     desired_rows = sorted(desired_rows)
     # check that the pos tag of each selected entry is what we think it is
-    # for k, v in pos_to_rows.iteritems():
+    # for k, v in pos_to_rows.items():
     #     assert all(k == x for x in pos_tags[v])
 
     # remove the vectors for infrequent entries, update list of pos tags too
@@ -138,7 +138,7 @@ def do_svd(input_path, output_prefix,
         # vectorize second matrix with the vocabulary (columns) of the first thesaurus to ensure shapes match
         # "project" second thesaurus into space of first thesaurus
         thesaurus.v.vocabulary_ = {x: i for i, x in enumerate(list(cols))}
-        extra_matrix = thesaurus.v.transform([dict(fv) for fv in thes_to_apply_to.itervalues()])
+        extra_matrix = thesaurus.v.transform([dict(fv) for fv in thes_to_apply_to.values()])
         # make sure the shape is right
         assert extra_matrix.shape[1] == mat.shape[1]
 

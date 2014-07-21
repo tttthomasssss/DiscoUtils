@@ -119,12 +119,12 @@ def run_stanford_pipeline(data_dir, stanford_dir, java_threads=2,
 
         #Construct stanford java command.
         stanford_cmd = ['./corenlp.sh', '-annotators',
-                        'tokenize,ssplit,pos,lemma,ner',
+                        'tokenize,ssplit,pos,lemma,parse',
                         # '-file', input_sub_dir, '-outputDirectory', output_sub_dir,
                         '-filelist', filelist, '-outputDirectory',
                         output_sub_dir,
                         '-threads', str(java_threads), '-outputFormat', 'xml',
-                        '-outputExtension', '.tagged']
+                        '-outputExtension', '.tagged', '-parse.maxlen', '50']
 
         logger.print_info("Running: \n" + str(stanford_cmd))
 
@@ -475,21 +475,25 @@ if __name__ == "__main__":
     '''
 
     #Pipeline examples:
-    run = set("stanford formatting parsing cleanup".split())
+    # run = set("stanford formatting parsing cleanup".split())
     #run = set("parsing cleanup".split())
 
     # run = set("formatting parsing cleanup".split())
     # run = set("formatting".split())
     # run = set("parsing".split())
-    # run = set("stanford".split())
+    run = set("stanford".split())
 
     #Fill arguments below, for example:
-    execute_pipeline(
-        '/mnt/lustre/scratch/inf/mmb28/FeatureExtrationToolkit/data/gigaword-afe-split',
-        path_to_stanford='/mnt/lustre/scratch/inf/mmb28/FeatureExtrationToolkit/stanford-corenlp-full-2013-06-20',
-        path_to_depparser='/mnt/lustre/scratch/inf/mmb28/parser_repo_miro',
-        # path_to_liblinear='/Volumes/LocalDataHD/mmb28/NetBeansProjects/liblinear',
-        stanford_java_threads=40,
-        parsing_python_processes=40,
-        run=run)
+    from glob import glob
+
+    for dataset in glob('/Volumes/LocalDataHD/mmb28/Downloads/techtc100-clean/Exp*'):
+        print dataset
+        execute_pipeline(
+            dataset,
+            path_to_stanford='/Volumes/LocalDataHD/mmb28/Downloads/stanford-corenlp-full-2013-06-20',
+            path_to_depparser='/mnt/lustre/scratch/inf/mmb28/parser_repo_miro',
+            # path_to_liblinear='/Volumes/LocalDataHD/mmb28/NetBeansProjects/liblinear',
+            stanford_java_threads=4,
+            parsing_python_processes=4,
+            run=run)
 

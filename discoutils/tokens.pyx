@@ -1,7 +1,7 @@
 from functools import total_ordering
 import logging
 from operator import itemgetter
-from itertools import izip_longest
+from itertools import zip_longest
 import re
 
 
@@ -42,7 +42,7 @@ class DocumentFeature(object):
             type = ''.join(match[2::3])
             match = iter(match)
             tokens = []
-            for (junk, word, pos) in izip_longest(match, match, match):
+            for (junk, word, pos) in zip_longest(match, match, match):
                 if junk:  # Either too many tokens, or invalid token
                     raise ValueError(junk)
                 if not word:

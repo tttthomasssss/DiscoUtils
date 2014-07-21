@@ -22,7 +22,10 @@ def test_count(filename):
 
 
 def test_do_filtering(filename):
-    from cStringIO import StringIO
+    try:
+        from cStringIO import StringIO
+    except ImportError:
+        from io import StringIO
 
     s = StringIO()
     counts, total = count('discoutils/tests/resources/exp6head', [re.compile('.*/N')])

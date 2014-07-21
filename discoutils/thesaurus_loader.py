@@ -115,7 +115,7 @@ class Thesaurus(object):
                                 logging.warn('Multiple entries for "%s" found. Merging.', tokens[0])
                                 c = Counter(dict(to_return[key]))
                                 c.update(dict(to_insert))
-                                to_return[key] = [(k, v) for k, v in c.iteritems()]
+                                to_return[key] = [(k, v) for k, v in c.items()]
                             else:
                                 raise ValueError('Multiple entries for "%s" found.' % tokens[0])
                         else:
@@ -128,7 +128,7 @@ class Thesaurus(object):
         """
         logging.info('Shelving thesaurus of size %d to %s', len(self), filename)
         d = shelve.open(filename, flag='c')  # read and write
-        for entry, features in self.iteritems():
+        for entry, features in self.items():
             d[str(entry)] = features
         d.close()
 
@@ -141,7 +141,7 @@ class Thesaurus(object):
         """
         logging.warn('row_transform and entry_filter options are ignored in order to use preserve_order')
         with open(filename, 'w') as outfile:
-            for entry, vector in self._obj.iteritems():
+            for entry, vector in self._obj.items():
                 features_str = '\t'.join(['%s\t%f' % foo for foo in vector])
                 outfile.write('%s\t%s\n' % (entry, features_str))
         return filename
@@ -155,7 +155,7 @@ class Thesaurus(object):
         here as some existing Thesaurus tests rely on it.
 
         :return: a tuple containing
-            1) the sparse matrix, in which rows correspond to the order of this object's iteritems()
+            1) the sparse matrix, in which rows correspond to the order of this object's items()
             2) a **sorted** list of all features (column labels of the matrix).
             3) a list of all entries (row labels of the matrix)
         :rtype: tuple
@@ -166,8 +166,8 @@ class Thesaurus(object):
 
         # order in which rows are iterated is not guaranteed if the dict if modified, but we're not doing that,
         # so it's all fine
-        mat = self.v.fit_transform([dict(fv) for fv in self.itervalues()])
-        rows = [k for k in self.iterkeys()]
+        mat = self.v.fit_transform([dict(fv) for fv in self.values()])
+        rows = [k for k in self.keys()]
         if row_transform:
             rows = map(row_transform, rows)
 
@@ -294,7 +294,7 @@ class Vectors(Thesaurus):
         # todo converting to a DocumentFeature is silly as any odd entry breaks this method
         logging.warn('Not attempting to preserve order of features when saving to TSV')
         # mat, cols, rows = self.to_sparse_matrix(row_transform=row_transform)
-        rows = {i: DocumentFeature.from_string(feat) for (feat, i) in self.rows.iteritems()}
+        rows = {i: DocumentFeature.from_string(feat) for (feat, i) in self.rows.items()}
         write_vectors_to_disk(self.matrix.tocoo(), rows, self.columns, events_path,
                               features_path=features_path, entries_path=entries_path,
                               entry_filter=entry_filter)

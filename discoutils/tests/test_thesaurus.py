@@ -67,7 +67,7 @@ def test_from_shelf(thes, tmpdir):
     filename = str(tmpdir.join('test_shelf'))
     thes.to_shelf(filename)
     loaded_thes = Thesaurus.from_shelf_readonly(filename)
-    for k, v in thes.iteritems():
+    for k, v in thes.items():
         assert k in loaded_thes
         assert v == loaded_thes[k]
 
@@ -140,7 +140,7 @@ def test_vectors_to_tsv(vectors_c, tmpdir):
     from_disk = Vectors.from_tsv(filename)
 
     # can't just assert from_disk == thesaurus_c, because to_tsv may reorder the columns
-    for k, v in vectors_c.iteritems():
+    for k, v in vectors_c.items():
         assert k in from_disk.keys()
         assert set(v) == set(vectors_c[k])
 
@@ -315,7 +315,7 @@ class TestLoad_thesauri(TestCase):
 
         d = shelve.open(filename, flag='r')  # read only
         from_shelf = Thesaurus(d)
-        for k, v in self.thesaurus.iteritems():
+        for k, v in self.thesaurus.items():
             self.assertEqual(self.thesaurus[k], from_shelf[k])
 
 
