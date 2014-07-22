@@ -52,7 +52,7 @@ def go_get_vectors(infile, outstream, seed_set=ContainsEverything()):
             if adjectives:
                 assert 1 == len(adjectives)  # no more than 1 entry per line
             if adjectives and amod_modifiers:
-                # logging.warn('Adjective has adjectival modifiers')
+                # logging.warning('Adjective has adjectival modifiers')
                 continue
 
             if adjectives and amod_heads:

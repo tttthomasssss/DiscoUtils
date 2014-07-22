@@ -79,7 +79,7 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
             feature_sums = np.array(matrix.tocsr()[accepted_rows].sum(axis=0))[0, :]
             for feature, count in zip(column_index, feature_sums):
                 if -1e-5 < count < 1e-5:
-                    logging.warn('Feature %s does not occur in vector set', feature)
+                    logging.warning('Feature %s does not occur in vector set', feature)
                 else:
                     outfile.write('%s\t%f\n' % (feature, count))
 

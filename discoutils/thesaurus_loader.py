@@ -71,7 +71,7 @@ class Thesaurus(object):
         to_return = dict()
         logging.info('Loading thesaurus %s from disk', tsv_file)
         if not allow_lexical_overlap:
-            logging.warn('DISALLOWING LEXICAL OVERLAP')
+            logging.warning('DISALLOWING LEXICAL OVERLAP')
 
         FILTERED = '___FILTERED___'.lower()
         with open(tsv_file) as infile:
@@ -80,7 +80,7 @@ class Thesaurus(object):
                 if len(tokens) % 2 == 0:
                     # must have an odd number of things, one for the entry
                     # and pairs for (neighbour, similarity)
-                    logging.warn('Dodgy line in thesaurus file: %s\n %s', tsv_file, line)
+                    logging.warning('Dodgy line in thesaurus file: %s\n %s', tsv_file, line)
                     continue
 
                 if tokens[0] != FILTERED:
@@ -112,7 +112,7 @@ class Thesaurus(object):
                     if len(to_insert) > 0:
                         if key in to_return:  # this is a duplicate entry, merge it or raise an error
                             if merge_duplicates:
-                                logging.warn('Multiple entries for "%s" found. Merging.', tokens[0])
+                                logging.warning('Multiple entries for "%s" found. Merging.', tokens[0])
                                 c = Counter(dict(to_return[key]))
                                 c.update(dict(to_insert))
                                 to_return[key] = [(k, v) for k, v in c.items()]
@@ -139,7 +139,7 @@ class Thesaurus(object):
         :param filename: file to write to
         :return: the file name
         """
-        logging.warn('row_transform and entry_filter options are ignored in order to use preserve_order')
+        logging.warning('row_transform and entry_filter options are ignored in order to use preserve_order')
         with open(filename, 'w') as outfile:
             for entry, vector in self._obj.items():
                 features_str = '\t'.join(['%s\t%f' % foo for foo in vector])
@@ -292,7 +292,7 @@ class Vectors(Thesaurus):
         :return: the file name
         """
         # todo converting to a DocumentFeature is silly as any odd entry breaks this method
-        logging.warn('Not attempting to preserve order of features when saving to TSV')
+        logging.warning('Not attempting to preserve order of features when saving to TSV')
         # mat, cols, rows = self.to_sparse_matrix(row_transform=row_transform)
         rows = {i: DocumentFeature.from_string(feat) for (feat, i) in self.rows.items()}
         write_vectors_to_disk(self.matrix.tocoo(), rows, self.columns, events_path,
