@@ -55,7 +55,7 @@ class Logger(object):
         if self.log:
             self.log.write(info + "\n")
         if printstdin:
-            print info
+            print(info)
         if flush:
             self.flush()
 
@@ -212,8 +212,7 @@ def dependency_parse_directory(data_dir, parser_project_path, liblinear_path,
     def chunks(items, no_of_chunks):
         """Split *items* into a number (no_of_chunks) of equal chunks."""
         chunksize = int(ceil((len(items) + no_of_chunks / 2.) / no_of_chunks))
-        return (items[i:i + chunksize] for i in xrange(0, len(items),
-                                                       chunksize))
+        return (items[i:i + chunksize] for i in range(0, len(items), chunksize))
 
     #Create output directory
     output_dir = "%s-parsed" % data_dir
@@ -487,7 +486,6 @@ if __name__ == "__main__":
     from glob import glob
 
     for dataset in glob('/Volumes/LocalDataHD/mmb28/Downloads/techtc100-clean/Exp*'):
-        print dataset
         execute_pipeline(
             dataset,
             path_to_stanford='/Volumes/LocalDataHD/mmb28/Downloads/stanford-corenlp-full-2013-06-20',

@@ -328,11 +328,11 @@ class Vectors(Thesaurus):
         :param output_prefix: str, a
         :param row_transform:
         """
-        with open('{0}.rows'.format(output_prefix), 'w+b') as outfile:
+        with open('{0}.rows'.format(output_prefix), 'w') as outfile:
             for entry in self.keys():
                 outfile.write('{}\n'.format(row_transform(entry) if row_transform else entry))
 
-        with open('{0}.sm'.format(output_prefix), 'w+b') as outfile:
+        with open('{0}.sm'.format(output_prefix), 'w') as outfile:
             for entry in self.keys():
                 tmp_entry = row_transform(entry) if row_transform else entry
                 for feature, count in self[entry]:
@@ -340,7 +340,7 @@ class Vectors(Thesaurus):
 
         # write dissect columns file
         columns = set(feature for vector in self.values() for (feature, count) in vector)
-        with open('{}.cols'.format(output_prefix), 'w+b') as outfile:
+        with open('{}.cols'.format(output_prefix), 'w') as outfile:
             for feature in sorted(columns):
                 outfile.write('{}\n'.format(feature))
 

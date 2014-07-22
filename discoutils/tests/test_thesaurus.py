@@ -1,5 +1,5 @@
 # coding=utf-8
-from bsddb3.db import DBAccessError
+from glob import glob
 import shelve
 from unittest import TestCase
 import os
@@ -157,7 +157,7 @@ def test_loading_unordered_feature_lists(tmpdir):
         'a/N': [('f1', 1), ('f2', 2), ('f3', 3)],
         'b/N': [('f3', 3), ('f1', 1), ('f2', 2), ],
         'c/N': [('f3', 3), ('f2', 2), ('f1', 1)],
-    } # three identical vectors
+    }  # three identical vectors
     v = Vectors(d)
     filename = str(tmpdir.join('outfile.txt'))
     v.to_tsv(filename)
@@ -166,6 +166,7 @@ def test_loading_unordered_feature_lists(tmpdir):
     assert v.rows == v1.rows
     assert v.columns == v1.columns
     assert_array_equal(v.matrix.A, v1.matrix.A)
+
 
 def test_to_dissect_sparse_files(vectors_c, tmpdir):
     """
@@ -213,7 +214,7 @@ def test_load_with_column_filter():
     mat, cols, rows = t.to_sparse_matrix()
     assert set(cols) == {'a/N', 'b/V', 'd/J', 'g/N'}
     assert mat.shape == (5, 4)
-    np.testing.assert_array_equal(expected_matrix.sum(axis=0)[np.newaxis], mat.sum(axis=0))
+    np.testing.assert_array_almost_equal(expected_matrix.sum(axis=0), mat.A.sum(axis=0))
 
     # test if severely constraining the vocabulary a bit correctly drops columns AND rows
     t = Thesaurus.from_tsv('discoutils/tests/resources/exp0-0c.strings',
@@ -286,7 +287,7 @@ class TestLoad_thesauri(TestCase):
         """
 
         self.tsv_file = 'discoutils/tests/resources/exp0-0a.strings'
-        self.params = {'sim_threshold': 0, 'include_self': False }
+        self.params = {'sim_threshold': 0, 'include_self': False}
         self.thesaurus = Thesaurus.from_tsv(self.tsv_file, **self.params)
 
     def _reload_thesaurus(self):
@@ -325,7 +326,7 @@ class TestLoad_thesauri(TestCase):
         self.assertRaises(Exception, modify)
 
         # tear down
-        self.assertTrue(os.path.exists(filename))
+        self.assertEquals(len(glob('%s*' % filename)), 1) # on some systems a suffix may be added to the shelf file
         d.close()
         if os.path.exists(filename):
             os.unlink(filename)
