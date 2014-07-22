@@ -236,7 +236,7 @@ def test_load_with_row_filter():
     mat, cols, rows = t.to_sparse_matrix()
     assert set(cols) == {'a/N', 'b/V', 'd/J', 'g/N', 'x/X'}
     assert set(rows) == {'a/N', 'd/J', 'g/N'}
-    np.testing.assert_array_equal(expected_matrix.sum(axis=0)[np.newaxis], mat.sum(axis=0))
+    np.testing.assert_array_equal(expected_matrix.sum(axis=0), mat.A.sum(axis=0))
 
 
 def test_load_with_max_num_neighbours():
