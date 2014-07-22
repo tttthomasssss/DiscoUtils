@@ -1,6 +1,6 @@
 import argparse
 import logging
-import iterpipes
+import iterpipes3 as iterpipes
 
 
 def set_stage_in_byblo_conf_file(filename, stage_id):
@@ -144,3 +144,9 @@ def reindex_all_byblo_vectors(output_prefix):
                        '-o {0}.entries.filtered -Xe {0}.entry-index'.format(output_prefix))
     run_and_log_output('./tools.sh index-events -et JDBM -i {0}.events.filtered.strings '
                        '-o {0}.events.filtered -Xe {0}.entry-index -Xf {0}.feature-index'.format(output_prefix))
+
+
+def get_git_hash():
+    c = iterpipes.cmd('git rev-parse HEAD')
+    out = iterpipes.run(c)
+    return list(out)[0].strip()

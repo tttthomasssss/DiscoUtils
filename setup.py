@@ -4,7 +4,7 @@ from Cython.Build import cythonize
 
 setup(
     name='DiscoUtils',
-    version='0.23',
+    version='0.24',
     packages=['discoutils', 'discoutils.tests'],
     author=['Julie Weeds', 'Miroslav Batchkarov'],
     author_email=['J.E.Weeds@sussex.ac.uk', 'M.Batchkarov@sussex.ac.uk'],
