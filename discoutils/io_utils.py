@@ -3,6 +3,7 @@ import logging
 from operator import itemgetter
 import numpy as np
 from scipy.sparse import isspmatrix_coo
+import six
 
 __author__ = 'mmb28'
 
@@ -43,7 +44,7 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
     accepted_rows = []
 
     logging.info('Writing events to %s', vectors_path)
-    if isinstance(vectors_path, str) or isinstance(vectors_path, bytes):
+    if isinstance(vectors_path, six.text_type):
         outfile = open(vectors_path, 'w')
     elif hasattr(vectors_path, 'write'):
         outfile = vectors_path
