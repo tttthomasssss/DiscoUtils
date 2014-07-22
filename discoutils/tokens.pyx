@@ -1,7 +1,7 @@
 from functools import total_ordering
 import logging
 from operator import itemgetter
-from itertools import zip_longest
+from six.moves import zip_longest
 import re
 
 

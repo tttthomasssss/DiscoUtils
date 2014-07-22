@@ -44,7 +44,7 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
     accepted_rows = []
 
     logging.info('Writing events to %s', vectors_path)
-    if isinstance(vectors_path, six.text_type):
+    if isinstance(vectors_path, six.string_types):
         outfile = open(vectors_path, 'w')
     elif hasattr(vectors_path, 'write'):
         outfile = vectors_path
