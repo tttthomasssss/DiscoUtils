@@ -9,9 +9,7 @@ def test_tokens_ordering():
     dog = Token('dog', 'N', ner='O')
     dog_v = Token('dog', 'V', ner='O')
 
-    assert cat < dog < dog_v
-    assert dog != dog_v
-
+    assert cat < dog == dog_v
     assert cat == cat_again
 
 

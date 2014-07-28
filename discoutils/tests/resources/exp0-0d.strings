@@ -1,4 +1,4 @@
 trade/N_law/N	law/N	0.783618	trade/N_agreement/N	0.729341	trade/N	0.621243	trade/N_action/N	0.576875	product/N_line/N	0.57155
 prince/N_aziz/N	crown/N_aziz/N	0.888771	abdul/N_aziz/N	0.865818	abdullah/N_aziz/N	0.843391	bin/N_aziz/N	0.745284	saudi/N_aziz/N	0.700742	prince/N	0.53654	king/N	0.353595	crown/N	0.289676	saudi/N_role/N	0.125625
 important/J_country/N	country/N	0.986256	return/N	0.844482	village/N	0.839336	product/N_line/N	0.833948	hotel/N	0.83148	city/N	0.823764
-foreign/J_line/N	foreign/J	0.889022	interview/N	0.457865	lot/N	0.457865	district/N	0.457865
+foreign/J_line/N	foreign/J	0.889022	foreign/N	0.12345	interview/N	0.457865	lot/N	0.457865	district/N	0.457865
