@@ -3,10 +3,13 @@ from glob import glob
 import shelve
 from unittest import TestCase
 import os
+from pandas import DataFrame
 
 import pytest
 import numpy as np
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_array_equal, assert_array_almost_equal
+from operator import itemgetter
+from sklearn.neighbors import NearestNeighbors
 
 from discoutils.thesaurus_loader import Thesaurus, Vectors
 from discoutils.collections_utils import walk_nonoverlapping_pairs
@@ -44,6 +47,42 @@ def thes_with_overlap():
                               sim_threshold=0,
                               ngram_separator='_',
                               allow_lexical_overlap=True)
+
+
+def test_nearest_neighbours(vectors_c):
+    entries_to_include = ['b/V', 'g/N', 'a/N']
+    from sklearn.metrics.pairwise import cosine_distances
+
+    df = DataFrame(1 - cosine_distances(vectors_c.matrix), index=vectors_c.rows, columns=vectors_c.rows)
+    print('Cosine sims:\n', df)  # all cosine sim in a readable format
+
+    df1 = DataFrame(vectors_c.matrix.A, columns=vectors_c.columns,
+                    # keys sorted by value
+                    index=map(itemgetter(0), sorted(vectors_c.rows.items(), key=itemgetter(1))))
+    print('Vectors:\n', df1)
+
+    vectors_c.init_sims(entries_to_include)
+    neigh = vectors_c.get_nearest_neighbours('b/V')
+    assert len(neigh) == 1
+    assert neigh[0] == ('b/V', 1.0)  # seeking nearest neighbour of something we trained on
+
+    neigh = vectors_c.get_nearest_neighbours('a/J_b/N')
+    assert len(neigh) == 1
+    # assert neigh[0] == ('b/V', df.loc['b/V']['a/J_b/N']) == ('b/V', df.loc['a/J_b/N']['b/V']) # todo this fails
+
+    vectors_c.init_sims(entries_to_include, n_neighbors=2)
+    neigh = vectors_c.get_nearest_neighbours('b/V')
+    assert len(neigh) == 2
+    # assert neigh == [('b/V', 1.0), ('a/N', df.loc['b/V']['a/N'])] # todo this fails
+
+
+def test_get_vector(vectors_c):
+    df1 = DataFrame(vectors_c.matrix.A, columns=vectors_c.columns,
+                    index=map(itemgetter(0), sorted(vectors_c.rows.items(), key=itemgetter(1))))
+    for entry in thesaurus_c.keys():
+        a = vectors_c.get_vector(entry).A.ravel()
+        b = df1.loc[entry].values
+        assert_array_almost_equal(a, b)
 
 
 def test_loading_bigram_thesaurus(thesaurus_c):
@@ -326,7 +365,7 @@ class TestLoad_thesauri(TestCase):
         self.assertRaises(Exception, modify)
 
         # tear down
-        self.assertEquals(len(glob('%s*' % filename)), 1) # on some systems a suffix may be added to the shelf file
+        self.assertEquals(len(glob('%s*' % filename)), 1)  # on some systems a suffix may be added to the shelf file
         d.close()
         if os.path.exists(filename):
             os.unlink(filename)

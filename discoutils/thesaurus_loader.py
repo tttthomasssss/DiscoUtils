@@ -6,6 +6,7 @@ import numpy
 from discoutils.tokens import DocumentFeature
 from discoutils.collections_utils import walk_nonoverlapping_pairs
 from discoutils.io_utils import write_vectors_to_disk
+from sklearn.neighbors import NearestNeighbors
 
 
 class Thesaurus(object):
@@ -221,6 +222,8 @@ class Thesaurus(object):
             item = DocumentFeature.tokens_as_str(item)
         return self._obj[item]
 
+    get_nearest_neighbours = __getitem__
+
     def __contains__(self, item):
         if isinstance(item, DocumentFeature):
             item = DocumentFeature.tokens_as_str(item)
@@ -359,6 +362,44 @@ class Vectors(Thesaurus):
             return None  # no vector for this
         return self.matrix[row, :]
 
+    def init_sims(self, vocab=None, n_neighbors=100):
+        # todo n_neighbours==k parameter of bov_feature_handlers
+        # todo does lexical overlap need to be implemented here? previously that was handled by from_tsv
+        """
+        Prepares a mini thesaurus
+        :param vocab: which entries to include in thesaurus. If None, all entries contain in this object are used
+        :type vocab: list. must be repeatedly iterable in the same order
+        """
+        if not vocab:
+            vocab = self.keys()
+        rows = [self.rows[foo] for foo in vocab if foo in self.rows]
+        if not rows:
+            raise ValueError('None of the vocabulary items in the labelled set have associated vectors')
+        inv_rows = {v: k for k, v in self.rows.items()}
+        self.selected_rows = {new: inv_rows[old] for new, old in enumerate(rows)}
+
+        self.nn = NearestNeighbors(algorithm='brute',  # todo BallTree/KDTree do not support cosine out of the box
+                                   metric='cosine',
+                                   n_neighbors=n_neighbors).fit(self.matrix[rows, :])
+        print(self.matrix[rows, :].A, self.selected_rows)
+
+    # todo add @lru_cache annotation?
+    def get_nearest_neighbours(self, entry):
+        # todo the returned similarity score is incorrect. unit tests fail
+        logging.info('Running nearest neighbour query')
+        if isinstance(entry, DocumentFeature):
+            entry = entry.tokens_as_str()
+        if not hasattr(self, 'nn'):
+            raise ValueError('init_sims has not been called')
+        if entry not in self:
+            return None
+
+        distances, indices = self.nn.kneighbors(self.get_vector(entry))
+        return [(self.selected_rows[indices[0][i]], 1 - distances[0][i]) for i in range(indices.shape[1])]
+
+    @classmethod
+    def from_shelf_readonly(cls, shelf_file_path):
+        return Vectors(shelve.open(shelf_file_path, flag='r'))  # read only
 
     def __str__(self):
         return '[%d vectors]' % len(self)
