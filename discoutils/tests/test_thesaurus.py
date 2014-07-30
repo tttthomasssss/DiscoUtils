@@ -53,27 +53,29 @@ def test_nearest_neighbours(vectors_c):
     entries_to_include = ['b/V', 'g/N', 'a/N']
     from sklearn.metrics.pairwise import cosine_distances
 
-    df = DataFrame(1 - cosine_distances(vectors_c.matrix), index=vectors_c.rows, columns=vectors_c.rows)
-    print('Cosine sims:\n', df)  # all cosine sim in a readable format
+    sims_df = DataFrame(1 - cosine_distances(vectors_c.matrix), index=vectors_c.row_names, columns=vectors_c.row_names)
+    print('Cosine sims:\n', sims_df)  # all cosine sim in a readable format
 
-    df1 = DataFrame(vectors_c.matrix.A, columns=vectors_c.columns,
-                    # keys sorted by value
-                    index=map(itemgetter(0), sorted(vectors_c.rows.items(), key=itemgetter(1))))
-    print('Vectors:\n', df1)
+    vec_df = DataFrame(vectors_c.matrix.A, columns=vectors_c.columns, index=vectors_c.row_names)
+    print('Vectors:\n', vec_df)
 
-    vectors_c.init_sims(entries_to_include)
+    vectors_c.init_sims(entries_to_include, n_neighbors=1)
     neigh = vectors_c.get_nearest_neighbours('b/V')
     assert len(neigh) == 1
     assert neigh[0] == ('b/V', 1.0)  # seeking nearest neighbour of something we trained on
 
     neigh = vectors_c.get_nearest_neighbours('a/J_b/N')
     assert len(neigh) == 1
-    # assert neigh[0] == ('b/V', df.loc['b/V']['a/J_b/N']) == ('b/V', df.loc['a/J_b/N']['b/V']) # todo this fails
+    assert neigh[0][0] == 'b/V'
+    assert abs(neigh[0][1] - 0.976246) < 1e-5
 
     vectors_c.init_sims(entries_to_include, n_neighbors=2)
     neigh = vectors_c.get_nearest_neighbours('b/V')
     assert len(neigh) == 2
-    # assert neigh == [('b/V', 1.0), ('a/N', df.loc['b/V']['a/N'])] # todo this fails
+    assert neigh[0][0] == 'b/V'
+    assert neigh[1][0] == 'a/N'
+    assert abs(neigh[0][1] - 1.) < 1e-5
+    assert abs(neigh[1][1] - 0.8224338) < 1e-5
 
 
 def test_get_vector(vectors_c):
@@ -136,6 +138,12 @@ def _assert_matrix_of_thesaurus_c_is_as_expected(matrix, rows, cols):
     matrix_ordered_by_rows = matrix[np.argsort(np.array(rows)), :]
     assert_array_equal(matrix_ordered_by_rows, expected_matrix)
 
+    vec_df = DataFrame(matrix, columns=cols, index=rows)
+    from pandas.util.testing import assert_frame_equal
+
+    expected_frame = DataFrame(expected_matrix, index=['a/J_b/N', 'a/N', 'b/V', 'd/J', 'g/N'], columns=cols)
+    assert_frame_equal(vec_df.sort(axis=0), expected_frame.sort(axis=0))
+
 
 def test_to_sparse_matrix(thesaurus_c):
     matrix, cols, rows = thesaurus_c.to_sparse_matrix()
@@ -143,6 +151,13 @@ def test_to_sparse_matrix(thesaurus_c):
     assert matrix.shape == (5, 5)
 
     _assert_matrix_of_thesaurus_c_is_as_expected(matrix, rows, cols)
+
+    data = np.array([
+        [0., 0.1, 0.5, 0.3, 0.],  # a
+        [0.1, 0., 0.3, 0.6, 0.],  # b
+        [0.3, 0.6, 0.7, 0., 0.9],  # g
+        [0.1, 0., 0.2, 0.8, 0.]  # a_n
+    ])
 
 
 def test_to_dissect_core_space(vectors_c):
@@ -202,7 +217,7 @@ def test_loading_unordered_feature_lists(tmpdir):
     v.to_tsv(filename)
 
     v1 = v.from_tsv(filename)
-    assert v.rows == v1.rows
+    assert v.name2row == v1.name2row
     assert v.columns == v1.columns
     assert_array_equal(v.matrix.A, v1.matrix.A)
 

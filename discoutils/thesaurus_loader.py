@@ -214,7 +214,7 @@ class Thesaurus(object):
         del self._obj[key]
         if hasattr(self, 'matrix'):
             mask = numpy.ones(self.matrix.shape[0], dtype=bool)
-            mask[self.rows[key]] = False
+            mask[self.name2row[key]] = False
             self.matrix = self.matrix[mask, :]
 
     def __getitem__(self, item):
@@ -257,8 +257,8 @@ class Vectors(Thesaurus):
         self._obj = d  # the underlying data dict. Do NOT RENAME!
         self.immutable = immutable
         # the matrix representation of this object
-        self.matrix, self.columns, rows = self.to_sparse_matrix()
-        self.rows = {feature: i for (i, feature) in enumerate(rows)}
+        self.matrix, self.columns, self.row_names = self.to_sparse_matrix()
+        self.name2row = {feature: i for (i, feature) in enumerate(self.row_names)}
 
     @classmethod
     def from_tsv(cls, tsv_file, sim_threshold=-1e20,
@@ -297,7 +297,7 @@ class Vectors(Thesaurus):
         # todo converting to a DocumentFeature is silly as any odd entry breaks this method
         logging.warning('Not attempting to preserve order of features when saving to TSV')
         # mat, cols, rows = self.to_sparse_matrix(row_transform=row_transform)
-        rows = {i: DocumentFeature.from_string(feat) for (feat, i) in self.rows.items()}
+        rows = {i: DocumentFeature.from_string(feat) for (feat, i) in self.name2row.items()}
         write_vectors_to_disk(self.matrix.tocoo(), rows, self.columns, events_path,
                               features_path=features_path, entries_path=entries_path,
                               entry_filter=entry_filter)
@@ -357,7 +357,7 @@ class Vectors(Thesaurus):
         :rtype: scipy.sparse.csr_matrix, or None
         """
         try:
-            row = self.rows[entry]
+            row = self.name2row[entry]
         except KeyError:
             return None  # no vector for this
         return self.matrix[row, :]
@@ -372,16 +372,16 @@ class Vectors(Thesaurus):
         """
         if not vocab:
             vocab = self.keys()
-        rows = [self.rows[foo] for foo in vocab if foo in self.rows]
-        if not rows:
+        selected_rows = [self.name2row[foo] for foo in vocab if foo in self.name2row]
+        if not selected_rows:
             raise ValueError('None of the vocabulary items in the labelled set have associated vectors')
-        inv_rows = {v: k for k, v in self.rows.items()}
-        self.selected_rows = {new: inv_rows[old] for new, old in enumerate(rows)}
+        row2name = {v: k for k, v in self.name2row.items()}
+        self.selected_row2name = {new: row2name[old] for new, old in enumerate(selected_rows)}
 
         self.nn = NearestNeighbors(algorithm='brute',  # todo BallTree/KDTree do not support cosine out of the box
                                    metric='cosine',
-                                   n_neighbors=n_neighbors).fit(self.matrix[rows, :])
-        print(self.matrix[rows, :].A, self.selected_rows)
+                                   n_neighbors=n_neighbors).fit(self.matrix[selected_rows, :])
+        print(self.matrix[selected_rows, :].A, self.selected_row2name)
 
     # todo add @lru_cache annotation?
     def get_nearest_neighbours(self, entry):
@@ -395,7 +395,7 @@ class Vectors(Thesaurus):
             return None
 
         distances, indices = self.nn.kneighbors(self.get_vector(entry))
-        return [(self.selected_rows[indices[0][i]], 1 - distances[0][i]) for i in range(indices.shape[1])]
+        return [(self.selected_row2name[indices[0][i]], 1 - distances[0][i]) for i in range(indices.shape[1])]
 
     @classmethod
     def from_shelf_readonly(cls, shelf_file_path):
