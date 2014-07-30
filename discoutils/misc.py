@@ -18,3 +18,21 @@ class ContainsEverything(object):
 
     def __contains__(self, item):
         return True
+
+
+class Delayed(object):
+    """
+    Delays a function call
+    >>> d = Delayed(int, '123')
+    >>> # do some more things here
+    >>> d()
+    123
+    """
+
+    def __init__(self, fn, *args, **kwargs):
+        self.fn = fn
+        self.args = args
+        self.kwargs = kwargs
+
+    def __call__(self, *args, **kwargs):
+        return self.fn(*self.args, **self.kwargs)

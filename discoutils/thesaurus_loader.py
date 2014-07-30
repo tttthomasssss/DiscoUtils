@@ -1,9 +1,11 @@
 # coding=utf-8
 from collections import Counter
+from functools import lru_cache
 import logging
 import shelve
 import numpy
 from discoutils.tokens import DocumentFeature
+import six
 from discoutils.collections_utils import walk_nonoverlapping_pairs
 from discoutils.io_utils import write_vectors_to_disk
 from sklearn.neighbors import NearestNeighbors
@@ -34,10 +36,24 @@ class Thesaurus(object):
         return Thesaurus(shelve.open(shelf_file_path, flag='r'))  # read only
 
     @classmethod
+    def remove_overlapping_neighbours(cls, entry, to_insert):
+        """
+
+        :type entry: DocumentFeature or str
+        :type to_insert: list of (str, float) tuples
+        """
+        if isinstance(entry, (six.string_types, six.text_type)):
+            entry = DocumentFeature.from_string(entry)
+        features = [(DocumentFeature.from_string(x[0]), x[1]) for x in to_insert]
+        to_insert = [(f[0].tokens_as_str(), f[1]) for f in features
+                     if not any(t in entry.tokens for t in f[0].tokens)]
+        return to_insert
+
+    @classmethod
     def from_tsv(cls, tsv_file, sim_threshold=0, include_self=False,
                  lowercasing=False, ngram_separator='_', allow_lexical_overlap=True,
                  row_filter=lambda x, y: True, column_filter=lambda x: True, max_len=50,
-                 max_neighbours=1e8, merge_duplicates=False, immutable=True):
+                 max_neighbours=1e8, merge_duplicates=False, immutable=True, **kwargs):
         """
         Create a Thesaurus by parsing a Byblo-compatible TSV files (events or sims).
         If duplicate values are encoutered during parsing, only the latest will be kept.
@@ -81,7 +97,7 @@ class Thesaurus(object):
                 if len(tokens) % 2 == 0:
                     # must have an odd number of things, one for the entry
                     # and pairs for (neighbour, similarity)
-                    logging.warning('Dodgy line in thesaurus file: %s\n %s', tsv_file, line)
+                    logging.warning('Skipping dodgy line in thesaurus file: %s\n %s', tsv_file, line)
                     continue
 
                 if tokens[0] != FILTERED:
@@ -90,6 +106,7 @@ class Thesaurus(object):
 
                     if dfkey.type == 'EMPTY' or (not row_filter(key, dfkey)) or len(key) > max_len:
                         # do not load things in the wrong format, they'll get in the way later
+                        logging.warning('Skipping entry for %s', key)
                         continue
 
                     to_insert = [(DocumentFeature.smart_lower(word, ngram_separator, lowercasing), float(sim))
@@ -97,10 +114,7 @@ class Thesaurus(object):
                                  if word.lower() != FILTERED and column_filter(word) and float(sim) > sim_threshold]
 
                     if not allow_lexical_overlap:
-                        features = [(DocumentFeature.from_string(x[0]), x[1]) for x in to_insert]
-                        key_tokens = dfkey.tokens
-                        to_insert = [(f[0].tokens_as_str(), f[1]) for f in features
-                                     if not any(t in key_tokens for t in f[0].tokens)]
+                        to_insert = cls.remove_overlapping_neighbours(dfkey, to_insert)
 
                     if len(to_insert) > max_neighbours:
                         to_insert = to_insert[:max_neighbours]
@@ -121,6 +135,8 @@ class Thesaurus(object):
                                 raise ValueError('Multiple entries for "%s" found.' % tokens[0])
                         else:
                             to_return[key] = to_insert
+                    else:
+                        logging.warning('Nothing survived filtering for %r', key)
         return Thesaurus(to_return, immutable=immutable)
 
     def to_shelf(self, filename):
@@ -185,7 +201,7 @@ class Thesaurus(object):
         fully. However, the state of the class is contained fully in the parameter of this method, we just need to
         save it, as the constructor would have done had it been invoked.
 
-        In this class the issue manifests in a weird way. __getattr__ may be called during unpicling, before the
+        In this class the issue manifests in a weird way. __getattr__ may be called during unpickling, before the
         class invariant is established (as the constructor isn't called). This class' __getattr__ delegates to
         self._obj, which does not exist, so __getattr__ is called again!
 
@@ -237,7 +253,7 @@ class Thesaurus(object):
 
 
 class Vectors(Thesaurus):
-    def __init__(self, d, immutable=True):
+    def __init__(self, d, immutable=True, allow_lexical_overlap=True):
         """
         A Thesaurus extension for storing feature vectors. Provides extra methods, e.g. dissect integration. Each
         entry can be of the form
@@ -256,6 +272,8 @@ class Vectors(Thesaurus):
         """
         self._obj = d  # the underlying data dict. Do NOT RENAME!
         self.immutable = immutable
+        self.allow_lexical_overlap = allow_lexical_overlap
+
         # the matrix representation of this object
         self.matrix, self.columns, self.row_names = self.to_sparse_matrix()
         self.name2row = {feature: i for (i, feature) in enumerate(self.row_names)}
@@ -266,18 +284,27 @@ class Vectors(Thesaurus):
                  row_filter=lambda x, y: True,
                  column_filter=lambda x: True,
                  max_len=50, max_neighbours=1e8,
-                 merge_duplicates=True, immutable=True):
+                 merge_duplicates=True,
+                 immutable=True, **kwargs):
         """
         Changes the default value of the sim_threshold parameter of super. Features can have any value, including
         negative (especially when working with neural embeddings).
         :rtype: Vectors
         """
+        # For vectors disallowing lexical overlap does not make sense at construction time, but should be
+        # implemented in get_nearest_neighbours. A Thesaurus can afford to do the filtering when reading the
+        # ready-made thesaurus from disk.
+        allow_lexical_overlap = kwargs.pop('allow_lexical_overlap', True)
         th = Thesaurus.from_tsv(tsv_file, sim_threshold=sim_threshold,
-                                ngram_separator=ngram_separator, allow_lexical_overlap=True,
+                                ngram_separator=ngram_separator,
+                                allow_lexical_overlap=True,
                                 row_filter=row_filter, column_filter=column_filter,
                                 max_len=max_len, max_neighbours=max_neighbours,
-                                merge_duplicates=merge_duplicates, immutable=immutable)
-        return Vectors(th._obj)  # get underlying dict from thesaurus
+                                merge_duplicates=merge_duplicates, **kwargs)
+
+        # get underlying dict from thesaurus
+        return Vectors(th._obj, immutable=immutable,
+                       allow_lexical_overlap=allow_lexical_overlap)
 
     def to_tsv(self, events_path, entries_path='', features_path='',
                entry_filter=lambda x: True, row_transform=lambda x: x):
@@ -291,7 +318,7 @@ class Vectors(Thesaurus):
          only be written if this callable return true
         :param row_transform: Callable, any transformation that might need to be done to each entry before converting
          it to a DocumentFeature. This is needed because some entries (e.g. african/J:amod-HEAD:leader) are not
-         directly convertible (needs to be african/J leader/N)
+         directly convertible (needs to be african/J_leader/N)
         :return: the file name
         """
         # todo converting to a DocumentFeature is silly as any odd entry breaks this method
@@ -363,12 +390,11 @@ class Vectors(Thesaurus):
         return self.matrix[row, :]
 
     def init_sims(self, vocab=None, n_neighbors=100):
-        # todo n_neighbours==k parameter of bov_feature_handlers
-        # todo does lexical overlap need to be implemented here? previously that was handled by from_tsv
+        # n_neighbours is high enough so that if lexical overlap is disable there would still be some neighbours left
         """
         Prepares a mini thesaurus
         :param vocab: which entries to include in thesaurus. If None, all entries contain in this object are used
-        :type vocab: list. must be repeatedly iterable in the same order
+        :type vocab: iterable of str
         """
         if not vocab:
             vocab = self.keys()
@@ -378,15 +404,15 @@ class Vectors(Thesaurus):
         row2name = {v: k for k, v in self.name2row.items()}
         self.selected_row2name = {new: row2name[old] for new, old in enumerate(selected_rows)}
 
-        self.nn = NearestNeighbors(algorithm='brute',  # todo BallTree/KDTree do not support cosine out of the box
+        # todo BallTree/KDTree do not support cosine out of the box. algorithm='brute' may be slower overall
+        # it's faster to build ,O(1), and slower to query
+        self.nn = NearestNeighbors(algorithm='brute',
                                    metric='cosine',
                                    n_neighbors=n_neighbors).fit(self.matrix[selected_rows, :])
-        print(self.matrix[selected_rows, :].A, self.selected_row2name)
+        self.get_nearest_neighbours.cache_clear()
 
-    # todo add @lru_cache annotation?
+    @lru_cache(maxsize=2 ** 13)
     def get_nearest_neighbours(self, entry):
-        # todo the returned similarity score is incorrect. unit tests fail
-        logging.info('Running nearest neighbour query')
         if isinstance(entry, DocumentFeature):
             entry = entry.tokens_as_str()
         if not hasattr(self, 'nn'):
@@ -395,7 +421,10 @@ class Vectors(Thesaurus):
             return None
 
         distances, indices = self.nn.kneighbors(self.get_vector(entry))
-        return [(self.selected_row2name[indices[0][i]], 1 - distances[0][i]) for i in range(indices.shape[1])]
+        neigh = [(self.selected_row2name[indices[0][i]], 1 - distances[0][i]) for i in range(indices.shape[1])]
+        if not self.allow_lexical_overlap:
+            neigh = self.remove_overlapping_neighbours(entry, neigh)
+        return neigh
 
     @classmethod
     def from_shelf_readonly(cls, shelf_file_path):

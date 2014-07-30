@@ -59,6 +59,14 @@ def test_nearest_neighbours(vectors_c):
     vec_df = DataFrame(vectors_c.matrix.A, columns=vectors_c.columns, index=vectors_c.row_names)
     print('Vectors:\n', vec_df)
 
+    vectors_c.init_sims(n_neighbors=1)  # insert all entries
+    vectors_c.allow_lexical_overlap = True
+    vectors_c.include_self = True
+    neigh = vectors_c.get_nearest_neighbours('b/V')
+    assert len(neigh) == 1
+    assert neigh[0] == ('b/V', 1.0)  # seeking nearest neighbour of something we trained on
+    assert vectors_c.nn._fit_X.shape == (5, 5)
+
     vectors_c.init_sims(entries_to_include, n_neighbors=1)
     neigh = vectors_c.get_nearest_neighbours('b/V')
     assert len(neigh) == 1
@@ -76,6 +84,14 @@ def test_nearest_neighbours(vectors_c):
     assert neigh[1][0] == 'a/N'
     assert abs(neigh[0][1] - 1.) < 1e-5
     assert abs(neigh[1][1] - 0.8224338) < 1e-5
+
+    # test lexical overlap
+    vectors_c.allow_lexical_overlap = False
+    vectors_c.init_sims(entries_to_include, n_neighbors=2)
+    neigh = vectors_c.get_nearest_neighbours('b/V')
+    assert neigh[0][0] == 'a/N'
+    assert abs(neigh[0][1] - 0.8224338) < 1e-5
+    assert len(neigh) == 1
 
 
 def test_get_vector(vectors_c):
