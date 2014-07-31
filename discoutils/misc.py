@@ -1,5 +1,6 @@
 __author__ = 'miroslavbatchkarov'
 
+import os, contextlib
 
 class Bunch:
     """
@@ -36,3 +37,18 @@ class Delayed(object):
 
     def __call__(self, *args, **kwargs):
         return self.fn(*self.args, **self.kwargs)
+
+@contextlib.contextmanager
+def temp_chdir(path):
+    """
+    Source: http://orip.org/2012/07/python-change-and-restore-working.html
+    Usage:
+    >>> with temp_chdir(gitrepo_path):
+    ...   subprocess.call('git status')
+    """
+    starting_directory = os.getcwd()
+    try:
+        os.chdir(path)
+        yield
+    finally:
+        os.chdir(starting_directory)

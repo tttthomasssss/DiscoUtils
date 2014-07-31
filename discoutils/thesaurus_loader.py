@@ -74,7 +74,8 @@ class Thesaurus(object):
         the string should be kept
         :param row_filter: takes a string and its corresponding DocumentFeature and determines if it should be loaded
         :param allow_lexical_overlap: whether neighbours/features are allowed to overlap lexically with the entry
-        they are neighbours/features of
+        they are neighbours/features of. OTE: THE BEHAVIOUR OF THIS PARAMETER IS SLIGHTLY DIFFERENT FROM THE EQUIVALENT
+        IN VECTORS. SEE COMMENT THERE.
         :param max_len: maximum length (in characters) of permissible **entries**. Longer entries are ignored.
         :param max_neighbours: maximum neighbours per entry. This is applied AFTER the filtering defined by
         column_filter and allow_lexical_overlap is finished.
@@ -269,6 +270,12 @@ class Vectors(Thesaurus):
          - changed default value of merge_duplicates
 
         :param d: a dictionary that serves as a basis
+        :param allow_lexical_overlap: if false, `get_nearest_neighbours` removes neighbours that have a unigram that is
+         also the query entry. For example, `big_cat` won't be a neighbour of either `cat` or `big_dog`.
+         NOTE: THE BEHAVIOUR OF THIS PARAMETER IS SLIGHTLY DIFFERENT FROM THE EQUIVALENT IN THESAURUS. This class
+         compares strings, so `net/N` != `net/J` won't be neighbours, and Thesaurus compares `Token` objects,
+         which currently do not take PoS tags into account, so `net/N` !== `net/J`.
+        :param immutable: see Thesaurus docs
         """
         self._obj = d  # the underlying data dict. Do NOT RENAME!
         self.immutable = immutable
@@ -389,12 +396,18 @@ class Vectors(Thesaurus):
             return None  # no vector for this
         return self.matrix[row, :]
 
-    def init_sims(self, vocab=None, n_neighbors=100):
-        # n_neighbours is high enough so that if lexical overlap is disable there would still be some neighbours left
+    def init_sims(self, vocab=None, n_neighbors=200):
         """
-        Prepares a mini thesaurus
-        :param vocab: which entries to include in thesaurus. If None, all entries contain in this object are used
+        Prepares a mini thesaurus by placing all entries in `vocab` in a data structure. After that it is possible to
+        get the nearest neighbours of an entry that this object has a vector for amongst all entries in `vocab`.
+
+        :param vocab: which entries to include in thesaurus. If None, all entries that this object has a vector
+        for are used
         :type vocab: iterable of str
+        :param n_neighbors: how many neighbours to return when calling `get_nearest_neighbours`. Less neighbours may
+        be returned if `self.allow_lexical_overlap` is false. By default this parameter is quite high so that
+        after removing all lexically overlapping neighbours there would still be some left. Clients are free to slice
+        further.
         """
         if not vocab:
             vocab = self.keys()
@@ -403,20 +416,26 @@ class Vectors(Thesaurus):
             raise ValueError('None of the vocabulary items in the labelled set have associated vectors')
         row2name = {v: k for k, v in self.name2row.items()}
         self.selected_row2name = {new: row2name[old] for new, old in enumerate(selected_rows)}
+        self.n_neighbours = n_neighbors
 
         # todo BallTree/KDTree do not support cosine out of the box. algorithm='brute' may be slower overall
         # it's faster to build ,O(1), and slower to query
         self.nn = NearestNeighbors(algorithm='brute',
                                    metric='cosine',
-                                   n_neighbors=n_neighbors).fit(self.matrix[selected_rows, :])
+                                   n_neighbors=n_neighbors + 1).fit(self.matrix[selected_rows, :])
         self.get_nearest_neighbours.cache_clear()
 
     @lru_cache(maxsize=2 ** 13)
     def get_nearest_neighbours(self, entry):
+        """
+        Get the nearest neighbours of `entry` amongst all entries that `init_sims` was called with. The top
+        neighbour will never be the entry itself (to match Byblo's behaviour)
+        """
         if isinstance(entry, DocumentFeature):
             entry = entry.tokens_as_str()
         if not hasattr(self, 'nn'):
-            raise ValueError('init_sims has not been called')
+            logging.warning('init_sims has not been called. Calling with default settings.')
+            self.init_sims()
         if entry not in self:
             return None
 
@@ -424,7 +443,9 @@ class Vectors(Thesaurus):
         neigh = [(self.selected_row2name[indices[0][i]], 1 - distances[0][i]) for i in range(indices.shape[1])]
         if not self.allow_lexical_overlap:
             neigh = self.remove_overlapping_neighbours(entry, neigh)
-        return neigh
+        if neigh[0][0] == entry:
+            neigh.pop(0)
+        return neigh[:self.n_neighbours]
 
     @classmethod
     def from_shelf_readonly(cls, shelf_file_path):

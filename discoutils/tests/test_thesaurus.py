@@ -9,8 +9,6 @@ import pytest
 import numpy as np
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 from operator import itemgetter
-from sklearn.neighbors import NearestNeighbors
-
 from discoutils.thesaurus_loader import Thesaurus, Vectors
 from discoutils.collections_utils import walk_nonoverlapping_pairs
 
@@ -61,16 +59,19 @@ def test_nearest_neighbours(vectors_c):
 
     vectors_c.init_sims(n_neighbors=1)  # insert all entries
     vectors_c.allow_lexical_overlap = True
-    vectors_c.include_self = True
     neigh = vectors_c.get_nearest_neighbours('b/V')
     assert len(neigh) == 1
-    assert neigh[0] == ('b/V', 1.0)  # seeking nearest neighbour of something we trained on
+    assert neigh[0][0] == 'a/J_b/N'  # seeking nearest neighbour of something we trained on
+    assert abs(neigh[0][1] - 0.976246) < 1e-5
     assert vectors_c.nn._fit_X.shape == (5, 5)
 
     vectors_c.init_sims(entries_to_include, n_neighbors=1)
     neigh = vectors_c.get_nearest_neighbours('b/V')
     assert len(neigh) == 1
-    assert neigh[0] == ('b/V', 1.0)  # seeking nearest neighbour of something we trained on
+    assert len(neigh) == 1
+    assert neigh[0][0] == 'a/N'  # seeking nearest neighbour of something we trained on
+    assert abs(neigh[0][1] - 0.822434) < 1e-5
+    assert vectors_c.nn._fit_X.shape == (3, 5)
 
     neigh = vectors_c.get_nearest_neighbours('a/J_b/N')
     assert len(neigh) == 1
@@ -80,10 +81,10 @@ def test_nearest_neighbours(vectors_c):
     vectors_c.init_sims(entries_to_include, n_neighbors=2)
     neigh = vectors_c.get_nearest_neighbours('b/V')
     assert len(neigh) == 2
-    assert neigh[0][0] == 'b/V'
-    assert neigh[1][0] == 'a/N'
-    assert abs(neigh[0][1] - 1.) < 1e-5
-    assert abs(neigh[1][1] - 0.8224338) < 1e-5
+    assert neigh[0][0] == 'a/N'
+    assert neigh[1][0] == 'g/N'
+    assert abs(neigh[0][1] - 0.8224338) < 1e-5
+    assert abs(neigh[1][1] - 0.267494) < 1e-5
 
     # test lexical overlap
     vectors_c.allow_lexical_overlap = False
@@ -91,7 +92,24 @@ def test_nearest_neighbours(vectors_c):
     neigh = vectors_c.get_nearest_neighbours('b/V')
     assert neigh[0][0] == 'a/N'
     assert abs(neigh[0][1] - 0.8224338) < 1e-5
-    assert len(neigh) == 1
+    assert len(neigh) == 2
+
+
+def test_get_nearest_neigh_compare_to_byblo(vectors_c:Vectors):
+    thes = 'discoutils/tests/resources/thesaurus_exp0-0c/test.sims.neighbours.strings'
+    if not os.path.exists(thes):
+        pytest.skip("The required resources for this test are missing. Please add them.")
+    else:
+        byblo_thes = Thesaurus.from_tsv(thes)
+        vectors_c.init_sims(n_neighbors=4)
+
+        assert set(vectors_c.keys()) == set(byblo_thes.keys())
+        for entry, byblo_neighbours in byblo_thes.items():
+            my_neighbours = vectors_c.get_nearest_neighbours(entry)
+
+            for ((word1, sim1), (word2, sim2)) in zip(my_neighbours, byblo_neighbours):
+                assert word1 == word2
+                assert abs(sim1 - sim2) < 1e-5
 
 
 def test_get_vector(vectors_c):
