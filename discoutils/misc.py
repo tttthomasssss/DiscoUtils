@@ -1,6 +1,8 @@
 __author__ = 'miroslavbatchkarov'
 
-import os, contextlib
+import os
+import contextlib
+
 
 class Bunch:
     """
@@ -23,20 +25,27 @@ class ContainsEverything(object):
 
 class Delayed(object):
     """
-    Delays a function call
+    Delays a function call. Passing in the object that the function is bound to makes this object picklable.
+    Modified from http://stackoverflow.com/a/1816969/419338
     >>> d = Delayed(int, '123')
     >>> # do some more things here
     >>> d()
     123
     """
 
-    def __init__(self, fn, *args, **kwargs):
-        self.fn = fn
+    def __init__(self, obj, method, *args, **kwargs):
+        self.obj = obj
         self.args = args
         self.kwargs = kwargs
+        if isinstance(method, str):
+            self.methodName = method
+        else:
+            assert callable(method)
+            self.methodName = method.__name__ # was called func_name in python2
 
     def __call__(self, *args, **kwargs):
-        return self.fn(*self.args, **self.kwargs)
+        return getattr(self.obj, self.methodName)(*self.args, **self.kwargs)
+
 
 @contextlib.contextmanager
 def temp_chdir(path):
