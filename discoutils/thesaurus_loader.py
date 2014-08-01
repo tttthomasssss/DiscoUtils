@@ -254,7 +254,7 @@ class Thesaurus(object):
 
 
 class Vectors(Thesaurus):
-    def __init__(self, d, immutable=True, allow_lexical_overlap=True):
+    def __init__(self, d, immutable=True, allow_lexical_overlap=True, **kwargs):
         """
         A Thesaurus extension for storing feature vectors. Provides extra methods, e.g. dissect integration. Each
         entry can be of the form
@@ -448,8 +448,8 @@ class Vectors(Thesaurus):
         return neigh[:self.n_neighbours]
 
     @classmethod
-    def from_shelf_readonly(cls, shelf_file_path):
-        return Vectors(shelve.open(shelf_file_path, flag='r'))  # read only
+    def from_shelf_readonly(cls, shelf_file_path, **kwargs):
+        return Vectors(shelve.open(shelf_file_path, flag='r'), **kwargs)  # read only
 
     def __str__(self):
         return '[%d vectors]' % len(self)
