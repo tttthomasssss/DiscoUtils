@@ -416,6 +416,10 @@ class Vectors(Thesaurus):
             raise ValueError('None of the vocabulary items in the labelled set have associated vectors')
         row2name = {v: k for k, v in self.name2row.items()}
         self.selected_row2name = {new: row2name[old] for new, old in enumerate(selected_rows)}
+        if n_neighbors > len(selected_rows):
+            logging.warning('You requested %d neighbours to be returned, but there are only %d. Truncating.',
+                            n_neighbors, len(selected_rows))
+            n_neighbors = len(selected_rows) - 1
         self.n_neighbours = n_neighbors
 
         # todo BallTree/KDTree do not support cosine out of the box. algorithm='brute' may be slower overall
