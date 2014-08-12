@@ -122,7 +122,7 @@ class DocumentFeature(object):
         Returns a human-readable representation of this object, including type information, e.g.
             DocumentFeature('1-GRAM', ('X', 'Y',)) -> '1-GRAM:X_Y'
         """
-        return '{}:{}'.format(self.type, self.tokens)
+        return self.tokens_as_str()
 
     def __repr__(self):
         return self.__str__()

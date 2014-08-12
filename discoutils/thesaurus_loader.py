@@ -313,8 +313,7 @@ class Vectors(Thesaurus):
         return Vectors(th._obj, immutable=immutable,
                        allow_lexical_overlap=allow_lexical_overlap)
 
-    def to_tsv(self, events_path, entries_path='', features_path='',
-               entry_filter=lambda x: True, row_transform=lambda x: x):
+    def to_tsv(self, events_path, entries_path='', features_path=''):
         """
         Writes this thesaurus to Byblo-compatible file like the one it was most likely read from. In the
         process converts all entries to a DocumentFeature, so all entries must be parsable into one. May reorder the
@@ -328,13 +327,9 @@ class Vectors(Thesaurus):
          directly convertible (needs to be african/J_leader/N)
         :return: the file name
         """
-        # todo converting to a DocumentFeature is silly as any odd entry breaks this method
-        logging.warning('Not attempting to preserve order of features when saving to TSV')
-        # mat, cols, rows = self.to_sparse_matrix(row_transform=row_transform)
-        rows = {i: DocumentFeature.from_string(feat) for (feat, i) in self.name2row.items()}
+        rows = {i: feat for (feat, i) in self.name2row.items()}
         write_vectors_to_disk(self.matrix.tocoo(), rows, self.columns, events_path,
-                              features_path=features_path, entries_path=entries_path,
-                              entry_filter=entry_filter)
+                              features_path=features_path, entries_path=entries_path)
         return events_path
 
     def to_dissect_core_space(self):
