@@ -57,9 +57,8 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
             if entry not in accepted_entry_counts:  # guard against duplicated vectors
                 accepted_rows.append(row_num)
                 features_and_counts = [(column_index[x[1]], x[2]) for x in column_ids_and_values]
-                outfile.write('%s\t%s\n' % (
-                    entry.tokens_as_str(),
-                    '\t'.join(map(str, chain.from_iterable(features_and_counts)))
+                outfile.write('%s\t%s\n' % (entry,
+                                            '\t'.join(map(str, chain.from_iterable(features_and_counts)))
                 ))
                 accepted_entry_counts[entry] = sum(x[1] for x in features_and_counts)
             if row_num % 5000 == 0 and outfile:
@@ -71,7 +70,7 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
         logging.info('Writing entries to %s', entries_path)
         with open(entries_path, 'w') as outfile:
             for entry, count in accepted_entry_counts.items():
-                outfile.write('%s\t%f\n' % (entry.tokens_as_str(), count))
+                outfile.write('%s\t%f\n' % (entry, count))
 
     if features_path and accepted_rows:  # guard against empty files
         logging.info('Writing features to %s', features_path)

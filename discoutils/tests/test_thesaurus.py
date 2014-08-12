@@ -100,7 +100,7 @@ def test_nearest_neighbours(vectors_c):
     assert len(neigh) == 2
 
 
-def test_get_nearest_neigh_compare_to_byblo(vectors_c:Vectors):
+def test_get_nearest_neigh_compare_to_byblo(vectors_c):
     thes = 'discoutils/tests/resources/thesaurus_exp0-0c/test.sims.neighbours.strings'
     if not os.path.exists(thes):
         pytest.skip("The required resources for this test are missing. Please add them.")

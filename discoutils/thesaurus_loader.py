@@ -1,6 +1,5 @@
 # coding=utf-8
 from collections import Counter
-from functools import lru_cache
 import logging
 import shelve
 import numpy
@@ -10,6 +9,10 @@ from discoutils.collections_utils import walk_nonoverlapping_pairs
 from discoutils.io_utils import write_vectors_to_disk
 from sklearn.neighbors import NearestNeighbors
 
+try:
+    from functools import lru_cache
+except ImportError:
+    from functools32 import lru_cache # py2
 
 class Thesaurus(object):
     def __init__(self, d, immutable=True):
