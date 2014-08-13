@@ -56,7 +56,8 @@ class Thesaurus(object):
     def from_tsv(cls, tsv_file, sim_threshold=0, include_self=False,
                  lowercasing=False, ngram_separator='_', allow_lexical_overlap=True,
                  row_filter=lambda x, y: True, column_filter=lambda x: True, max_len=50,
-                 max_neighbours=1e8, merge_duplicates=False, immutable=True, **kwargs):
+                 max_neighbours=1e8, merge_duplicates=False, immutable=True,
+                 enforce_word_entry_pos_format=True,**kwargs):
         """
         Create a Thesaurus by parsing a Byblo-compatible TSV files (events or sims).
         If duplicate values are encoutered during parsing, only the latest will be kept.
@@ -75,7 +76,8 @@ class Thesaurus(object):
         :param ngram_separator: When n_gram entries are read in, what are the indidivual tokens separated by
         :param column_filter: A function that takes a string (column in the file) and returns whether or not
         the string should be kept
-        :param row_filter: takes a string and its corresponding DocumentFeature and determines if it should be loaded
+        :param row_filter: takes a string and its corresponding DocumentFeature and determines if it should be loaded.
+        If `enforce_word_entry_pos_format` is `False`, the second parameter to this function will be `None`
         :param allow_lexical_overlap: whether neighbours/features are allowed to overlap lexically with the entry
         they are neighbours/features of. OTE: THE BEHAVIOUR OF THIS PARAMETER IS SLIGHTLY DIFFERENT FROM THE EQUIVALENT
         IN VECTORS. SEE COMMENT THERE.
@@ -84,6 +86,8 @@ class Thesaurus(object):
         column_filter and allow_lexical_overlap is finished.
         :param merge_duplicates: whether to raise en error if multiple entries exist, or concatenate/add them together.
         The former is appropriate for `Thesaurus`, and the latter for `Vectors`
+        :param enforce_word_entry_pos_format: if true, entries that are not in a `word/POS` format are skipped. This
+        must be true for `allow_lexical_overlap` to work.
         """
 
         if not tsv_file:
@@ -94,6 +98,9 @@ class Thesaurus(object):
         if not allow_lexical_overlap:
             logging.warning('DISALLOWING LEXICAL OVERLAP')
 
+        if not allow_lexical_overlap and not enforce_word_entry_pos_format:
+            raise ValueError('allow_lexical_overlap requires entries to be converted to a DocumentFeature. '
+                             'Please enable enforce_word_entry_pos_format')
         FILTERED = '___FILTERED___'.lower()
         with open(tsv_file) as infile:
             for line in infile:
@@ -106,10 +113,14 @@ class Thesaurus(object):
 
                 if tokens[0] != FILTERED:
                     key = DocumentFeature.smart_lower(tokens[0], ngram_separator, lowercasing)
-                    dfkey = DocumentFeature.from_string(key)
+                    dfkey = DocumentFeature.from_string(key) if enforce_word_entry_pos_format else None
 
-                    if dfkey.type == 'EMPTY' or (not row_filter(key, dfkey)) or len(key) > max_len:
+                    if enforce_word_entry_pos_format and dfkey.type == 'EMPTY':
                         # do not load things in the wrong format, they'll get in the way later
+                        logging.warning('%s is not in the word/POS format, skipping', tokens[0])
+                        continue
+
+                    if (not row_filter(key, dfkey)) or len(key) > max_len:
                         logging.warning('Skipping entry for %s', key)
                         continue
 
@@ -313,6 +324,8 @@ class Vectors(Thesaurus):
                                 merge_duplicates=merge_duplicates, **kwargs)
 
         # get underlying dict from thesaurus
+        if not th._obj:
+            raise ValueError('No entries left over after filtering')
         return Vectors(th._obj, immutable=immutable,
                        allow_lexical_overlap=allow_lexical_overlap)
 
