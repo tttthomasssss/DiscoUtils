@@ -426,7 +426,9 @@ class TestLoad_thesauri(TestCase):
         self.assertRaises(Exception, modify)
 
         # tear down
-        self.assertEquals(len(glob('%s*' % filename)), 1)  # on some systems a suffix may be added to the shelf file
+
+        # on some systems a suffix may be added to the shelf file or the DB may be split in several files
+        self.assertTrue(len(glob('%s*' % filename)))
         d.close()
         if os.path.exists(filename):
             os.unlink(filename)
