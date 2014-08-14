@@ -94,11 +94,18 @@ def test_nearest_neighbours(vectors_c):
     assert abs(neigh[0][1] - 0.8224338) < 1e-5
     assert len(neigh) == 2
 
+
+def test_nearest_neighbours_too_few_neighbours(vectors_c):
     # check that no error is raised when asking for more neighbours than there are
+    entries_to_include = ['b/V', 'g/N', 'a/N']
     vectors_c.init_sims(entries_to_include, n_neighbors=99999)
     neigh = vectors_c.get_nearest_neighbours('b/V')
     assert len(neigh) == 2
 
+    # corner case- less neighbours than requested are returned if the pool of neighbour is exhausted
+    vectors_c.init_sims(entries_to_include, n_neighbors=3)
+    neigh = vectors_c.get_nearest_neighbours('b/V')
+    assert len(neigh) == 2
 
 def test_get_nearest_neigh_compare_to_byblo(vectors_c):
     thes = 'discoutils/tests/resources/thesaurus_exp0-0c/test.sims.neighbours.strings'

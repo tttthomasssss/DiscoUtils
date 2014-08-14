@@ -12,7 +12,8 @@ from sklearn.neighbors import NearestNeighbors
 try:
     from functools import lru_cache
 except ImportError:
-    from functools32 import lru_cache # py2
+    from functools32 import lru_cache  # py2
+
 
 class Thesaurus(object):
     def __init__(self, d, immutable=True):
@@ -57,7 +58,7 @@ class Thesaurus(object):
                  lowercasing=False, ngram_separator='_', allow_lexical_overlap=True,
                  row_filter=lambda x, y: True, column_filter=lambda x: True, max_len=50,
                  max_neighbours=1e8, merge_duplicates=False, immutable=True,
-                 enforce_word_entry_pos_format=True,**kwargs):
+                 enforce_word_entry_pos_format=True, **kwargs):
         """
         Create a Thesaurus by parsing a Byblo-compatible TSV files (events or sims).
         If duplicate values are encoutered during parsing, only the latest will be kept.
@@ -418,11 +419,16 @@ class Vectors(Thesaurus):
         :param n_neighbors: how many neighbours to return when calling `get_nearest_neighbours`. Less neighbours may
         be returned if `self.allow_lexical_overlap` is false. By default this parameter is quite high so that
         after removing all lexically overlapping neighbours there would still be some left. Clients are free to slice
-        further.
+        further. Also, one less neighbour will be returned for an entry `E` if
+        `len(vocab)==N and E in vocab and n_neighbours == N`
         """
         if not vocab:
             vocab = self.keys()
+
+        # the pool out of which nearest neighbours will be sampled
+        self.search_pool = set(foo for foo in vocab if foo in self.name2row)
         selected_rows = [self.name2row[foo] for foo in vocab if foo in self.name2row]
+
         if not selected_rows:
             raise ValueError('None of the vocabulary items in the labelled set have associated vectors')
         row2name = {v: k for k, v in self.name2row.items()}
@@ -430,14 +436,14 @@ class Vectors(Thesaurus):
         if n_neighbors > len(selected_rows):
             logging.warning('You requested %d neighbours to be returned, but there are only %d. Truncating.',
                             n_neighbors, len(selected_rows))
-            n_neighbors = len(selected_rows) - 1
+            n_neighbors = len(selected_rows)
         self.n_neighbours = n_neighbors
 
         # todo BallTree/KDTree do not support cosine out of the box. algorithm='brute' may be slower overall
-        # it's faster to build ,O(1), and slower to query
+        # it's faster to build, O(1), and slower to query
         self.nn = NearestNeighbors(algorithm='brute',
                                    metric='cosine',
-                                   n_neighbors=n_neighbors + 1).fit(self.matrix[selected_rows, :])
+                                   n_neighbors=n_neighbors).fit(self.matrix[selected_rows, :])
         self.get_nearest_neighbours.cache_clear()
 
     @lru_cache(maxsize=2 ** 13)
@@ -454,7 +460,11 @@ class Vectors(Thesaurus):
         if entry not in self:
             return None
 
-        distances, indices = self.nn.kneighbors(self.get_vector(entry))
+        # if `entry` is contained in the list of neighbours, it will be popped and one less neighbour will be returned
+        # so we need to ask for one extra neighbour, but without exceeding the number of available neighbours
+        n_neigh = min(self.n_neighbours + (entry in self.search_pool), len(self.search_pool))
+        distances, indices = self.nn.kneighbors(self.get_vector(entry),
+                                                n_neighbors=n_neigh)
         neigh = [(self.selected_row2name[indices[0][i]], 1 - distances[0][i]) for i in range(indices.shape[1])]
         if not self.allow_lexical_overlap:
             neigh = self.remove_overlapping_neighbours(entry, neigh)
