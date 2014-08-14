@@ -16,13 +16,13 @@ class PyTest(TestCommand):
 
 setup(
     name='DiscoUtils',
-    version='0.26',
+    version='0.27',
     packages=['discoutils', 'discoutils.tests'],
     author=['Julie Weeds', 'Miroslav Batchkarov'],
     author_email=['J.E.Weeds@sussex.ac.uk', 'M.Batchkarov@sussex.ac.uk'],
     tests_require=['pytest>=2.4.2'],
     cmdclass={'test': PyTest},
-    install_requires=['pytest', 'Cython', 'iterpipes', 'numpy', 'scipy', 'scikit-learn'],
+    install_requires=['pytest', 'Cython', 'iterpipes', 'numpy', 'scipy', 'scikit-learn', 'six'],
     ext_modules=cythonize(["discoutils/tokens.pyx"])
 )
 
