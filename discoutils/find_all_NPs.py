@@ -1,7 +1,7 @@
 import argparse
 import re
 import logging
-from .misc import ContainsEverything
+from discoutils.misc import ContainsEverything
 
 '''
 Finds all adjective-noun and noun-noun compounds in a FET output file.

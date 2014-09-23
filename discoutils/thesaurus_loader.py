@@ -3,8 +3,8 @@ from collections import Counter
 import logging
 import shelve
 import numpy
-from discoutils.tokens import DocumentFeature
 import six
+from discoutils.tokens import DocumentFeature
 from discoutils.collections_utils import walk_nonoverlapping_pairs
 from discoutils.io_utils import write_vectors_to_disk
 from sklearn.neighbors import NearestNeighbors

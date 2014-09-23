@@ -1,9 +1,9 @@
 import argparse
 import logging
+import re
 
 __author__ = 'Julie'
 
-import re, sys
 
 
 def count(filename, pos_patterns):
