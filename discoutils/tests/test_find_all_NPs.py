@@ -1,7 +1,8 @@
 from collections import Counter
+from pprint import pprint
 
 __author__ = 'miroslavbatchkarov'
-from discoutils.find_all_NPs import go_get_NPs, go_get_vectors
+from discoutils.find_all_NPs import get_NPs, get_window_vectors
 
 try:
     from cStringIO import StringIO
@@ -11,7 +12,7 @@ except ImportError:
 
 def test_find_all_NPs():
     s = StringIO()
-    go_get_NPs('discoutils/tests/resources/exp10head.pbfiltered', s)
+    get_NPs('discoutils/tests/resources/exp10head.pbfiltered', s)
     expected = "full-time/J_tribunal/N\n" \
                "ordinary/J_session/N\n" \
                "council/N_session/N\n" \
@@ -26,14 +27,14 @@ def test_find_all_NPs():
 
 def test_find_all_NPs_with_seed():
     s = StringIO()
-    go_get_NPs('discoutils/tests/resources/exp10head.pbfiltered', s, seed_set={'ordinary/J_session/N'})
+    get_NPs('discoutils/tests/resources/exp10head.pbfiltered', s, whitelist={'ordinary/J'})
     expected = "ordinary/J_session/N\n"
     assert s.getvalue() == expected
 
 
 def test_find_all_NPs_with_window_vectors():
     s = StringIO()
-    go_get_vectors('discoutils/tests/resources/exp10head.pbfiltered', s)
+    get_window_vectors('discoutils/tests/resources/exp10head.pbfiltered', s)
     expected_entries = Counter({'council/N_session/N': 2,
                                 "large/J_cat/N": 1,
                                 "fluffy/J_cat/N": 1,
@@ -46,11 +47,25 @@ def test_find_all_NPs_with_window_vectors():
 
     expected_features = {'T:something/N', 'T:large/J', 'T:what/CONJ', 'T:ever/N', 'T:feature/J', 'T:cat/N'}
     lines = s.getvalue().rstrip().split('\n')
-    from pprint import pprint
-
     pprint(lines)
-    assert len(lines) == 9  # only some NPs have window features. Some lines in the test
+    assert len(lines) == 9
+    # only some NPs have window features. Some lines in the test
     # file mention multiple NPs- all need to be produced. Some NNs appear twice.
     # Just check that the right features are returned, by do not bother with checking their ordering
+    assert expected_features == set(feature for line in lines for feature in line.split('\t')[1:])
+    assert expected_entries == Counter(line.split('\t')[0] for line in lines)
+
+
+def test_find_all_NPs_with_window_vectors_with_filtering():
+    s = StringIO()
+    get_window_vectors('discoutils/tests/resources/exp10head.pbfiltered', s,
+                   whitelist={'council/N_session/N', "large/J_cat/N"})
+    expected_entries = Counter({'council/N_session/N': 2,
+                                "large/J_cat/N": 1})
+
+    expected_features = {'T:something/N', 'T:large/J', 'T:cat/N'}
+    lines = s.getvalue().rstrip().split('\n')
+    pprint(lines)
+    assert len(lines) == 3
     assert expected_features == set(feature for line in lines for feature in line.split('\t')[1:])
     assert expected_entries == Counter(line.split('\t')[0] for line in lines)

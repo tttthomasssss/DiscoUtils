@@ -3,13 +3,6 @@ import re
 import logging
 from discoutils.misc import ContainsEverything
 
-'''
-Finds all adjective-noun and noun-noun compounds in a FET output file.
-Optionally accepts only these ANs/NNs whose modifier is mentioned in a file.
-Requires features to have an associated PoS tag, see
-discoutils/tests/resources/exp10head.pbfiltered
-'''
-
 noun_pattern = re.compile('^(\S+?/N)')  # a noun entry
 adj_pattern = re.compile('^(\S+?/J)')  # an adjective entry
 
@@ -32,7 +25,14 @@ def _find_and_output_features(second, line, first, np_type, outstream, phrase_se
             outstream.write('{}\t{}\n'.format(phrase, '\t'.join(features)))
 
 
-def go_get_vectors(infile, outstream, seed_set=ContainsEverything()):
+def get_window_vectors(infile, outstream, whitelist=ContainsEverything()):
+    """
+    Outputs observed proximity vectors of some NPs. NPs are identified by a regex match, e.g.
+    noun entry that has an amod feature, etc. Multiple features of the same entry are not merged.
+    :param infile: FET-formatted feature file
+    :param outstream: where to write vectors
+    :param whitelist: set of NPs to consider. Default: all that occur in the input file
+    """
     with open(infile) as inf:
         for i, line in enumerate(inf):
             if i % 100000 == 0:
@@ -59,28 +59,36 @@ def go_get_vectors(infile, outstream, seed_set=ContainsEverything()):
                 first = adjectives[0]
                 second = amod_heads[0]
                 np_type = 'AN'
-                _find_and_output_features(second, line, first, np_type, outstream, seed_set)
+                _find_and_output_features(second, line, first, np_type, outstream, whitelist)
 
             if nouns and amod_modifiers:
                 second = nouns[0]
                 np_type = 'AN'
                 for first in an_modifier_feature_pattern.findall(line):
-                    _find_and_output_features(second, line, first, np_type, outstream, seed_set)
+                    _find_and_output_features(second, line, first, np_type, outstream, whitelist)
 
             if nouns and nn_heads:
                 np_type = 'NN'
                 first = nouns[0]
                 second = nn_heads[0]
-                _find_and_output_features(second, line, first, np_type, outstream, seed_set)
+                _find_and_output_features(second, line, first, np_type, outstream, whitelist)
 
             if nouns and nn_modifiers:
                 np_type = 'NN'
                 second = nouns[0]
                 for first in nn_modifier_feature_pattern.findall(line):
-                    _find_and_output_features(second, line, first, np_type, outstream, seed_set)
+                    _find_and_output_features(second, line, first, np_type, outstream, whitelist)
 
 
-def go_get_NPs(infile, outstream, seed_set=ContainsEverything()):
+def get_NPs(infile, outstream, whitelist=ContainsEverything()):
+    """
+    Finds all adjective-noun and noun-noun compounds in a FET output file.
+    Optionally accepts only these ANs/NNs whose modifiers are contained in a set
+    Requires features to have an associated PoS tag, see discoutils/tests/resources/exp10head.pbfiltered
+    :param infile: file to read
+    :param outstream: where to white newline-separate NPs
+    :param whitelist: set of modifiers
+    """
     with open(infile) as inf:
         for i, line in enumerate(inf):
             if i % 100000 == 0:
@@ -92,7 +100,7 @@ def go_get_NPs(infile, outstream, seed_set=ContainsEverything()):
                 for pattern in [an_modifier_feature_pattern, nn_modifier_feature_pattern]:
                     for modifier in pattern.findall(line):
                         phrase = '{}_{}'.format(modifier, head)
-                        if phrase in seed_set:
+                        if modifier in whitelist:
                             outstream.write('%s\n' % phrase)
 
 
@@ -101,12 +109,13 @@ def read_configuration():
     parser.add_argument('input', help='Input file')
     parser.add_argument('-o', '--output', required=False, type=str, default=None,
                         help='Name of output file. Default <input file>.ANsNNs')
-    parser.add_argument('-s', '--modifier_set', required=False, type=str, default='',
-                        help='Name of file containing a set of phrases that will be considered. '
-                             'All other NPs are disregarded.')
+    parser.add_argument('-s', '--whitelist', required=False, type=str, default='',
+                        help='Name of file containing a set of phrases/modifiers that will be considered. '
+                             'All other NPs are disregarded. When vectors is true, these need to be phrases, '
+                             'otherwise they need to be modifiers.')
     parser.add_argument('-v', '--vectors', action='store_true',
                         help='If set, will also output '
-                             'window features for each entry occurrence .Default is False')
+                             'window features for each entry occurrence. Default is False')
     return parser.parse_args()
 
 
@@ -119,21 +128,20 @@ if __name__ == '__main__':
 
     if conf.vectors:
         logging.info('Will also output window features for each entry occurrence')
-        function = go_get_vectors
+        function = get_window_vectors
     else:
         logging.info('Will only output NP entries')
-        function = go_get_NPs
-    seed = conf.modifier_set
+        function = get_NPs
+    phrase_set = conf.phrases
 
-    if seed:
-        with open(seed) as f:
-            seed = set(x.strip() for x in f.readlines())
+    if phrase_set:
+        with open(phrase_set) as f:
+            phrase_set = set(x.strip() for x in f.readlines())
+    else:
+        phrase_set = ContainsEverything()
 
     with open(output, 'w') as outstream:
         logging.info('Reading from %s', conf.input)
         logging.info('Writing to %s', output)
 
-        if seed:
-            function(conf.input, outstream, seed_set=seed)
-        else:
-            function(conf.input, outstream)
+        function(conf.input, outstream, whitelist=phrase_set)
