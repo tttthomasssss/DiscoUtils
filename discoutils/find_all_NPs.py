@@ -132,16 +132,16 @@ if __name__ == '__main__':
     else:
         logging.info('Will only output NP entries')
         function = get_NPs
-    phrase_set = conf.phrases
+    whitelist = conf.whitelist
 
-    if phrase_set:
-        with open(phrase_set) as f:
-            phrase_set = set(x.strip() for x in f.readlines())
+    if whitelist:
+        with open(whitelist) as f:
+            whitelist = set(x.strip() for x in f.readlines())
     else:
-        phrase_set = ContainsEverything()
+        whitelist = ContainsEverything()
 
     with open(output, 'w') as outstream:
         logging.info('Reading from %s', conf.input)
         logging.info('Writing to %s', output)
 
-        function(conf.input, outstream, whitelist=phrase_set)
+        function(conf.input, outstream, whitelist=whitelist)
