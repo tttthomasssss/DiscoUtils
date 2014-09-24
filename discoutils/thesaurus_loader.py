@@ -330,7 +330,7 @@ class Vectors(Thesaurus):
         return Vectors(th._obj, immutable=immutable,
                        allow_lexical_overlap=allow_lexical_overlap)
 
-    def to_tsv(self, events_path, entries_path='', features_path=''):
+    def to_tsv(self, events_path, entries_path='', features_path='', entry_filter=lambda x: True):
         """
         Writes this thesaurus to Byblo-compatible file like the one it was most likely read from. In the
         process converts all entries to a DocumentFeature, so all entries must be parsable into one. May reorder the
@@ -346,7 +346,8 @@ class Vectors(Thesaurus):
         """
         rows = {i: feat for (feat, i) in self.name2row.items()}
         write_vectors_to_disk(self.matrix.tocoo(), rows, self.columns, events_path,
-                              features_path=features_path, entries_path=entries_path)
+                              features_path=features_path, entries_path=entries_path,
+                              entry_filter=entry_filter)
         return events_path
 
     def to_dissect_core_space(self):
