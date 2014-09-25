@@ -330,21 +330,23 @@ class Vectors(Thesaurus):
         return Vectors(th._obj, immutable=immutable,
                        allow_lexical_overlap=allow_lexical_overlap)
 
-    def to_tsv(self, events_path, entries_path='', features_path='', entry_filter=lambda x: True):
+    def to_tsv(self, events_path, entries_path='', features_path='',
+               entry_filter=lambda x: True, row_transform=lambda x: x):
         """
         Writes this thesaurus to Byblo-compatible file like the one it was most likely read from. In the
         process converts all entries to a DocumentFeature, so all entries must be parsable into one. May reorder the
         features of each entry.
 
-        :param events_file: file to write to
+        :param events_path: file to write to
         :param entry_filter: Called for every DocumentFeature that is an entry in this thesaurus. The vector will
          only be written if this callable return true
         :param row_transform: Callable, any transformation that might need to be done to each entry before converting
          it to a DocumentFeature. This is needed because some entries (e.g. african/J:amod-HEAD:leader) are not
-         directly convertible (needs to be african/J_leader/N)
+         directly convertible (needs to be african/J_leader/N). Use this if the entries cannot be converted to
+         DocumentFeature, e.g. if the data isn't PoS tagged.
         :return: the file name
         """
-        rows = {i: feat for (feat, i) in self.name2row.items()}
+        rows = {i: DocumentFeature.from_string(row_transform(feat)) for (feat, i) in self.name2row.items()}
         write_vectors_to_disk(self.matrix.tocoo(), rows, self.columns, events_path,
                               features_path=features_path, entries_path=entries_path,
                               entry_filter=entry_filter)
