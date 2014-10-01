@@ -132,6 +132,10 @@ def test_get_vector(vectors_c):
         b = df1.loc[entry].values
         assert_array_almost_equal(a, b)
 
+def test_cosine_similarity(vectors_c):
+    assert vectors_c.cos_similarity('a/N', 'g/N') > 0
+    assert vectors_c.cos_similarity('a/N', 'a/N') == 1.0
+    assert vectors_c.cos_similarity('afdsf', 'fad') is None
 
 def test_loading_bigram_thesaurus(thesaurus_c):
     assert len(thesaurus_c) == 5

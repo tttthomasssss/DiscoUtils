@@ -2,8 +2,9 @@
 from collections import Counter
 import logging
 import shelve
-import numpy
+import numpy as np
 import six
+from scipy.spatial.distance import cosine as cos_distance
 from discoutils.tokens import DocumentFeature
 from discoutils.collections_utils import walk_nonoverlapping_pairs
 from discoutils.io_utils import write_vectors_to_disk
@@ -179,7 +180,7 @@ class Thesaurus(object):
                 outfile.write('%s\t%s\n' % (entry, features_str))
         return filename
 
-    def to_sparse_matrix(self, row_transform=None, dtype=numpy.float):
+    def to_sparse_matrix(self, row_transform=None, dtype=np.float):
         """
         Converts the vectors held in this object to a scipy sparse matrix. Raises a ValueError if
         the thesaurus is empty
@@ -245,7 +246,7 @@ class Thesaurus(object):
 
         del self._obj[key]
         if hasattr(self, 'matrix'):
-            mask = numpy.ones(self.matrix.shape[0], dtype=bool)
+            mask = np.ones(self.matrix.shape[0], dtype=bool)
             mask[self.name2row[key]] = False
             self.matrix = self.matrix[mask, :]
 
@@ -478,6 +479,14 @@ class Vectors(Thesaurus):
     @classmethod
     def from_shelf_readonly(cls, shelf_file_path, **kwargs):
         return Vectors(shelve.open(shelf_file_path, flag='r'), **kwargs)  # read only
+
+    def cos_similarity(self, first, second):
+        v1 = self.get_vector(first)
+        v2 = self.get_vector(second)
+        if v1 is not None and v2 is not None:
+            return 1- cos_distance(v1.A, v2.A)
+        else:
+            return None
 
     def __str__(self):
         return '[%d vectors]' % len(self)
