@@ -146,7 +146,7 @@ class Token(object):
     PoS tag and NER tag. The index field is ignored by __hash__, __eq__ and the like
 
     """
-    def __init__(self, text, pos, index=0, ner='O'):
+    def __init__(self, text, pos, index=0, ner='O', **kwargs):
         self.text = text
         self.pos = pos
         self.index = index  # useful when parsing CONLL
