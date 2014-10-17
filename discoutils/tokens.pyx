@@ -143,10 +143,15 @@ class Token(object):
     """
     Represents a text token. Stores information about the text, PoS/NER tag and index in a sentence.
     Tokens are printed with their PoS tag, e.g. cat/N, and ordered alphabetically by text,
-    PoS tag and NER tag. The index field is ignored by __hash__, __eq__ and the like
+    PoS tag and NER tag.
+
+    The index field may ignored by __hash__, __eq__ and the like. This is because it is irrelevant
+    when checking if a token is contained in a sentence- most of the time where exactly is not
+    important. However, the index matters when building a dependency tree of looking up the
+    neighbours of a given token.
 
     """
-    def __init__(self, text, pos, index=0, ner='O', **kwargs):
+    def __init__(self, text, pos, index='any', ner='O', **kwargs):
         self.text = text
         self.pos = pos
         self.index = index  # useful when parsing CONLL
@@ -162,7 +167,10 @@ class Token(object):
         return (not self < other) and (not other < self)
 
     def __lt__(self, other):
-        return self.text < other.text
+        if self.index == 'any' or other.index == 'any':
+            return self.text < other.text
+        else:
+            return (self.text, self.index) < (other.text, other.index)
 
     def __hash__(self):
         return hash((self.text, self.pos))
