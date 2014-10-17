@@ -3,6 +3,7 @@ from collections import Counter
 import tarfile
 import logging
 import shelve
+import os
 import numpy as np
 import six
 from scipy.spatial.distance import cosine as cos_distance
@@ -100,6 +101,10 @@ class Thesaurus(object):
 
         to_return = dict()
         logging.info('Loading thesaurus %s from disk', tsv_file)
+        gz_file = tsv_file + '.gz'
+        if os.path.exists(gz_file) and tar:
+            logging.warning('Using .gz version of thesaurus')
+            tsv_file = gz_file
         if not allow_lexical_overlap:
             logging.warning('DISALLOWING LEXICAL OVERLAP')
 
@@ -110,7 +115,13 @@ class Thesaurus(object):
 
         if tar:
             tarf = tarfile.open(tsv_file, 'r')
-            fhandle = tarf.extractfile(tarf.getmembers()[0])
+            members = tarf.getmembers()
+            if len(members) != 1:
+                # todo this is odd, I don't know why it is happening
+                # on some machine tar adds a second hidden file to the archive
+                logging.warning('Tar archive contains multiple files: %r' % members)
+                logging.warning('Using the last file in the tar')
+            fhandle = tarf.extractfile(members[-1])
         else:
             fhandle = open(tsv_file)
 
