@@ -107,6 +107,7 @@ def test_nearest_neighbours_too_few_neighbours(vectors_c):
     neigh = vectors_c.get_nearest_neighbours('b/V')
     assert len(neigh) == 2
 
+
 def test_get_nearest_neigh_compare_to_byblo(vectors_c):
     thes = 'discoutils/tests/resources/thesaurus_exp0-0c/test.sims.neighbours.strings'
     if not os.path.exists(thes):
@@ -132,10 +133,12 @@ def test_get_vector(vectors_c):
         b = df1.loc[entry].values
         assert_array_almost_equal(a, b)
 
+
 def test_cosine_similarity(vectors_c):
     assert vectors_c.cos_similarity('a/N', 'g/N') > 0
     assert vectors_c.cos_similarity('a/N', 'a/N') == 1.0
     assert vectors_c.cos_similarity('afdsf', 'fad') is None
+
 
 def test_loading_bigram_thesaurus(thesaurus_c):
     assert len(thesaurus_c) == 5
@@ -381,6 +384,14 @@ def test_max_num_neighbours_and_no_lexical_overlap():
                            max_neighbours=1)
     assert t['trade/N_law/N'][0][0] == 'law/N'
     assert len(t['trade/N_law/N']) == 1
+
+
+def test_loading_from_tar():
+    t1 = Thesaurus.from_tsv('discoutils/tests/resources/exp0-0a.strings')
+    t2 = Thesaurus.from_tsv('discoutils/tests/resources/exp0-0a.gz', tar=True)
+    for k, v in t1.items():
+        assert k in t2
+        assert v == t2[k]
 
 
 class TestLoad_thesauri(TestCase):

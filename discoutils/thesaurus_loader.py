@@ -1,5 +1,6 @@
 # coding=utf-8
 from collections import Counter
+import tarfile
 import logging
 import shelve
 import numpy as np
@@ -59,7 +60,7 @@ class Thesaurus(object):
                  lowercasing=False, ngram_separator='_', allow_lexical_overlap=True,
                  row_filter=lambda x, y: True, column_filter=lambda x: True, max_len=50,
                  max_neighbours=1e8, merge_duplicates=False, immutable=True,
-                 enforce_word_entry_pos_format=True, **kwargs):
+                 enforce_word_entry_pos_format=True, tar=False, **kwargs):
         """
         Create a Thesaurus by parsing a Byblo-compatible TSV files (events or sims).
         If duplicate values are encoutered during parsing, only the latest will be kept.
@@ -90,6 +91,8 @@ class Thesaurus(object):
         The former is appropriate for `Thesaurus`, and the latter for `Vectors`
         :param enforce_word_entry_pos_format: if true, entries that are not in a `word/POS` format are skipped. This
         must be true for `allow_lexical_overlap` to work.
+        :param tar: whether the file is compressed by running `tar -zcvf file.gz file.txt`. Assuming the tar contains
+        a single file.
         """
 
         if not tsv_file:
@@ -104,9 +107,21 @@ class Thesaurus(object):
             raise ValueError('allow_lexical_overlap requires entries to be converted to a DocumentFeature. '
                              'Please enable enforce_word_entry_pos_format')
         FILTERED = '___FILTERED___'.lower()
-        with open(tsv_file) as infile:
-            for line in infile:
-                tokens = line.strip().split('\t')
+
+        if tar:
+            tarf = tarfile.open(tsv_file, 'r')
+            fhandle = tarf.extractfile(tarf.getmembers()[0])
+        else:
+            fhandle = open(tsv_file)
+
+        with fhandle as infile:
+            for line in infile.readlines():
+                if tar:
+                    # this is a byte steam, needs to be decoded
+                    tokens = line.decode('UTF8').strip().split('\t')
+                else:
+                    tokens = line.strip().split('\t')
+
                 if len(tokens) % 2 == 0:
                     # must have an odd number of things, one for the entry
                     # and pairs for (neighbour, similarity)
@@ -484,7 +499,7 @@ class Vectors(Thesaurus):
         v1 = self.get_vector(first)
         v2 = self.get_vector(second)
         if v1 is not None and v2 is not None:
-            return 1- cos_distance(v1.A, v2.A)
+            return 1 - cos_distance(v1.A, v2.A)
         else:
             return None
 
