@@ -498,7 +498,7 @@ class Vectors(Thesaurus):
         neigh = [(self.selected_row2name[indices[0][i]], 1 - distances[0][i]) for i in range(indices.shape[1])]
         if not self.allow_lexical_overlap:
             neigh = self.remove_overlapping_neighbours(entry, neigh)
-        if neigh[0][0] == entry:
+        if neigh and neigh[0][0] == entry:  # avoid popping an empty list
             neigh.pop(0)
         return neigh[:self.n_neighbours]
 
