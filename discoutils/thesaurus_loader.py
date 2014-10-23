@@ -428,10 +428,12 @@ class Vectors(Thesaurus):
         Returns a vector for the given entry. This differs from self.__getitem__ in that it returns a sparse matrix
         instead of a list of (feature, count) tuples
         :param entry: the entry
-        :type entry: str
+        :type entry: str or DocumentFeature
         :return: vector for the entry
         :rtype: scipy.sparse.csr_matrix, or None
         """
+        if isinstance(entry, DocumentFeature):
+            entry = entry.tokens_as_str()
         try:
             row = self.name2row[entry]
         except KeyError:
@@ -469,14 +471,16 @@ class Vectors(Thesaurus):
             n_neighbors = len(selected_rows)
         self.n_neighbours = n_neighbors
 
-        # todo BallTree/KDTree do not support cosine out of the box. algorithm='brute' may be slower overall
-        # it's faster to build, O(1), and slower to query
-        self.nn = NearestNeighbors(algorithm='brute',
-                                   metric='cosine',
+        # todo BallTree/KDTree do not support cosine out of the box. algorithm='brute' is slower overall
+        # for larger datasets. Tt's faster to build, O(1), and slower to query. If using euclidean as an
+        # alternative, change 1-dist to dist in get_nearest_neighbour. Also, reduce the default value of
+        # k from 200 to get another boost in performance
+        self.nn = NearestNeighbors(algorithm='brute',  # 'kd_tree',
+                                   metric='cosine',  # 'euclidean',
                                    n_neighbors=n_neighbors).fit(self.matrix[selected_rows, :])
         self.get_nearest_neighbours.cache_clear()
 
-    @lru_cache(maxsize=2 ** 13)
+    @lru_cache(maxsize=2 ** 16)
     def get_nearest_neighbours(self, entry):
         """
         Get the nearest neighbours of `entry` amongst all entries that `init_sims` was called with. The top
