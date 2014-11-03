@@ -243,8 +243,8 @@ def test_vectors_to_tsv(vectors_c, tmpdir):
     """
     # these are feature vectors, columns(features) can be reordered
     filename = str(tmpdir.join('outfile.txt'))
-    vectors_c.to_tsv(filename)
-    from_disk = Vectors.from_tsv(filename)
+    vectors_c.to_tsv(filename, gzipped=True)
+    from_disk = Vectors.from_tsv(filename, gzipped=True)
 
     # can't just assert from_disk == thesaurus_c, because to_tsv may reorder the columns
     for k, v in vectors_c.items():

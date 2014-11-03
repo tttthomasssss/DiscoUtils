@@ -1,3 +1,4 @@
+import gzip
 from itertools import groupby, chain
 import logging
 from operator import itemgetter
@@ -9,7 +10,7 @@ __author__ = 'mmb28'
 
 
 def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, features_path='', entries_path='',
-                          entry_filter=lambda x: True):
+                          entry_filter=lambda x: True, gzipped=False):
     """
     Converts a matrix and its associated row/column indices to a Byblo compatible entries/features/event files,
     possibly applying a tranformation function to each entry.
@@ -45,7 +46,10 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
 
     logging.info('Writing events to %s', vectors_path)
     if isinstance(vectors_path, six.string_types):
-        outfile = open(vectors_path, 'w')
+        if gzipped:
+            outfile = gzip.open(vectors_path, 'w')
+        else:
+            outfile = open(vectors_path, 'w')
     elif hasattr(vectors_path, 'write'):
         outfile = vectors_path
     else:
@@ -57,9 +61,8 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
             if entry not in accepted_entry_counts:  # guard against duplicated vectors
                 accepted_rows.append(row_num)
                 features_and_counts = [(column_index[x[1]], x[2]) for x in column_ids_and_values]
-                outfile.write('%s\t%s\n' % (entry,
-                                            '\t'.join(map(str, chain.from_iterable(features_and_counts)))
-                ))
+                s = '%s\t%s\n' % (entry, '\t'.join(map(str, chain.from_iterable(features_and_counts))))
+                outfile.write(s.encode('utf8') if gzipped else s)
                 accepted_entry_counts[entry] = sum(x[1] for x in features_and_counts)
             if row_num % 5000 == 0 and outfile:
                 logging.info('Processed %d vectors', row_num)

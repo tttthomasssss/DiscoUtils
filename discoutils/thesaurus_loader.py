@@ -1,5 +1,6 @@
 # coding=utf-8
 from collections import Counter
+import contextlib
 import gzip
 import logging
 import shelve
@@ -184,7 +185,7 @@ class Thesaurus(object):
             d[str(entry)] = features
         d.close()
 
-    def to_tsv(self, filename):
+    def to_tsv(self, filename, gzipped=False):
         """
         Writes this thesaurus to a Byblo-compatible sims file like the one it was most likely read from.  Neighbours
         are written in the order that they appear in.
@@ -192,7 +193,11 @@ class Thesaurus(object):
         :return: the file name
         """
         logging.warning('row_transform and entry_filter options are ignored in order to use preserve_order')
-        with open(filename, 'w') as outfile:
+        if gzipped:
+            f = gzip.open(filename, 'w')
+        else:
+            f = open(filename, 'w')
+        with contextlib.closing(f) as outfile:
             for entry, vector in self._obj.items():
                 features_str = '\t'.join(['%s\t%f' % foo for foo in vector])
                 outfile.write('%s\t%s\n' % (entry, features_str))
@@ -326,7 +331,7 @@ class Vectors(Thesaurus):
                  column_filter=lambda x: True,
                  max_len=50, max_neighbours=1e8,
                  merge_duplicates=True,
-                 immutable=True, **kwargs):
+                 immutable=True, gzipped=False, **kwargs):
         """
         Changes the default value of the sim_threshold parameter of super. Features can have any value, including
         negative (especially when working with neural embeddings).
@@ -341,7 +346,8 @@ class Vectors(Thesaurus):
                                 allow_lexical_overlap=True,
                                 row_filter=row_filter, column_filter=column_filter,
                                 max_len=max_len, max_neighbours=max_neighbours,
-                                merge_duplicates=merge_duplicates, **kwargs)
+                                merge_duplicates=merge_duplicates, gzipped=gzipped,
+                                **kwargs)
 
         # get underlying dict from thesaurus
         if not th._obj:
@@ -350,7 +356,8 @@ class Vectors(Thesaurus):
                        allow_lexical_overlap=allow_lexical_overlap)
 
     def to_tsv(self, events_path, entries_path='', features_path='',
-               entry_filter=lambda x: True, row_transform=lambda x: x):
+               entry_filter=lambda x: True, row_transform=lambda x: x,
+               gzipped=False):
         """
         Writes this thesaurus to Byblo-compatible file like the one it was most likely read from. In the
         process converts all entries to a DocumentFeature, so all entries must be parsable into one. May reorder the
@@ -368,7 +375,7 @@ class Vectors(Thesaurus):
         rows = {i: DocumentFeature.from_string(row_transform(feat)) for (feat, i) in self.name2row.items()}
         write_vectors_to_disk(self.matrix.tocoo(), rows, self.columns, events_path,
                               features_path=features_path, entries_path=entries_path,
-                              entry_filter=entry_filter)
+                              entry_filter=entry_filter, gzipped=gzipped)
         return events_path
 
     def to_dissect_core_space(self):
