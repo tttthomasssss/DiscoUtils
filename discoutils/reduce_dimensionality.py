@@ -92,7 +92,7 @@ def _write_to_disk(reduced_mat, method, prefix, rows):
     model_file = prefix + '.model.pkl'
     write_vectors_to_disk(reduced_mat, rows,
                           ['SVD:feat{0:05d}'.format(i) for i in range(reduced_mat.shape[1])],
-                          events_file, features_file, entries_file)
+                          events_file, features_file, entries_file, gzipped=True)
 
     # disabled because it causes a crash with large objects
     # see http://bugs.python.org/issue11564
