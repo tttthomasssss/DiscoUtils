@@ -1,6 +1,6 @@
 # coding=utf-8
 from collections import Counter
-import tarfile
+import gzip
 import logging
 import shelve
 import os
@@ -61,7 +61,7 @@ class Thesaurus(object):
                  lowercasing=False, ngram_separator='_', allow_lexical_overlap=True,
                  row_filter=lambda x, y: True, column_filter=lambda x: True, max_len=50,
                  max_neighbours=1e8, merge_duplicates=False, immutable=True,
-                 enforce_word_entry_pos_format=True, tar=False, **kwargs):
+                 enforce_word_entry_pos_format=True, gzipped=False, **kwargs):
         """
         Create a Thesaurus by parsing a Byblo-compatible TSV files (events or sims).
         If duplicate values are encoutered during parsing, only the latest will be kept.
@@ -92,8 +92,7 @@ class Thesaurus(object):
         The former is appropriate for `Thesaurus`, and the latter for `Vectors`
         :param enforce_word_entry_pos_format: if true, entries that are not in a `word/POS` format are skipped. This
         must be true for `allow_lexical_overlap` to work.
-        :param tar: whether the file is compressed by running `tar -zcvf file.gz file.txt`. Assuming the tar contains
-        a single file.
+        :param gzipped: whether the file is compressed by running `gzip file.txt`
         """
 
         if not tsv_file:
@@ -102,7 +101,7 @@ class Thesaurus(object):
         to_return = dict()
         logging.info('Loading thesaurus %s from disk', tsv_file)
         gz_file = tsv_file + '.gz'
-        if os.path.exists(gz_file) and tar:
+        if os.path.exists(gz_file) and gzipped:
             logging.warning('Using .gz version of thesaurus')
             tsv_file = gz_file
         if not allow_lexical_overlap:
@@ -113,21 +112,14 @@ class Thesaurus(object):
                              'Please enable enforce_word_entry_pos_format')
         FILTERED = '___FILTERED___'.lower()
 
-        if tar:
-            tarf = tarfile.open(tsv_file, 'r')
-            members = tarf.getmembers()
-            if len(members) != 1:
-                # todo this is odd, I don't know why it is happening
-                # on some machine tar adds a second hidden file to the archive
-                logging.warning('Tar archive contains multiple files: %r' % members)
-                logging.warning('Using the last file in the tar')
-            fhandle = tarf.extractfile(members[-1])
+        if gzipped:
+            fhandle = gzip.open(tsv_file, 'r')
         else:
             fhandle = open(tsv_file)
 
         with fhandle as infile:
             for line in infile.readlines():
-                if tar:
+                if gzipped:
                     # this is a byte steam, needs to be decoded
                     tokens = line.decode('UTF8').strip().split('\t')
                 else:

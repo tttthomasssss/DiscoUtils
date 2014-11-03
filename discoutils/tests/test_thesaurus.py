@@ -388,7 +388,7 @@ def test_max_num_neighbours_and_no_lexical_overlap():
 
 def test_loading_from_tar():
     t1 = Thesaurus.from_tsv('discoutils/tests/resources/exp0-0a.strings')
-    t2 = Thesaurus.from_tsv('discoutils/tests/resources/exp0-0a.gz', tar=True)
+    t2 = Thesaurus.from_tsv('discoutils/tests/resources/exp0-0a.strings.gz', gzipped=True)
     for k, v in t1.items():
         assert k in t2
         assert v == t2[k]
