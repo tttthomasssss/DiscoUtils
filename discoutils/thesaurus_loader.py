@@ -114,7 +114,7 @@ class Thesaurus(object):
         FILTERED = '___FILTERED___'.lower()
 
         if gzipped:
-            fhandle = gzip.open(tsv_file, 'r')
+            fhandle = gzip.open(tsv_file)
         else:
             fhandle = open(tsv_file)
 
