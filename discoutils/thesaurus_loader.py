@@ -67,7 +67,8 @@ class Thesaurus(object):
         Create a Thesaurus by parsing a Byblo-compatible TSV files (events or sims).
         If duplicate values are encoutered during parsing, only the latest will be kept.
 
-        :param tsv_file: path to input TSV file
+        :param tsv_file: path to input TSV file. If `gzipped` is True, this method searches for `tsv_file + '.gz'` and
+        uses it if it exists, otherwise it falls back to `tsv_file` and assumes it is gzipped.
         :type tsv_file:  str
         :param sim_threshold: min similarity between an entry and its neighbour for the neighbour to be included
         :type sim_threshold: float
