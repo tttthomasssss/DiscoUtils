@@ -37,6 +37,8 @@ class DocumentFeature(object):
         :param string: the string to parse
         :return: DocumentFeature corresponding to the input string or DocumentFeature(type, tuple(tokens))
         """
+        if isinstance(string, DocumentFeature):
+            return string
         try:
             match = cls._TOKEN_RE.split(string, 3)
             type = ''.join(match[2::3])
@@ -51,7 +53,7 @@ class DocumentFeature(object):
             type = cls._TYPES.get(type,
                                   ('EMPTY', '1-GRAM', '2-GRAM', '3-GRAM')[len(tokens)])
             return DocumentFeature(type, tuple(tokens))
-        except:
+        except Exception as e:
             logging.error('Cannot create token out of string %s', string)
             return DocumentFeature('EMPTY', tuple())
 
