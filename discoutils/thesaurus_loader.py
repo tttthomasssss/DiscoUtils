@@ -478,16 +478,15 @@ class Vectors(Thesaurus):
         self.nn = NearestNeighbors(algorithm='brute',  # 'kd_tree',
                                    metric='cosine',  # 'euclidean',
                                    n_neighbors=n_neighbors).fit(self.matrix[selected_rows, :])
+        self.get_nearest_neighbours = self.get_nearest_neighbours_linear
         self.get_nearest_neighbours.cache_clear()
 
     @lru_cache(maxsize=2 ** 16)
-    def get_nearest_neighbours(self, entry):
+    def get_nearest_neighbours_linear(self, entry):
         """
         Get the nearest neighbours of `entry` amongst all entries that `init_sims` was called with. The top
         neighbour will never be the entry itself (to match Byblo's behaviour)
         """
-        if isinstance(entry, DocumentFeature):
-            entry = entry.tokens_as_str()
         if not hasattr(self, 'nn'):
             logging.warning('init_sims has not been called. Calling with default settings.')
             self.init_sims()
@@ -505,6 +504,10 @@ class Vectors(Thesaurus):
         if neigh and neigh[0][0] == entry:  # avoid popping an empty list
             neigh.pop(0)
         return neigh[:self.n_neighbours]
+
+    @lru_cache(maxsize=2 ** 16)
+    def get_nearest_neighbours_skipping(self, entry):
+        pass
 
     @classmethod
     def from_shelf_readonly(cls, shelf_file_path, **kwargs):
