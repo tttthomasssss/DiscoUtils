@@ -507,7 +507,20 @@ class Vectors(Thesaurus):
 
     @lru_cache(maxsize=2 ** 16)
     def get_nearest_neighbours_skipping(self, entry):
-        pass
+        # accumulate neighbours by repeatedly calling get_nn_linear
+        result = []
+        selected_neighbours = set()
+        for i in range(self.n_neighbours - 1): # todo this may never terminate
+            neigh = self.get_nearest_neighbours_linear(entry)
+            # do not jump back to where we came from
+            neigh = [foo for foo in neigh if foo[0] not in selected_neighbours]
+            if not self.allow_lexical_overlap:
+                neigh = self.remove_overlapping_neighbours(entry, neigh)
+
+            entry = neigh[0][0]
+            selected_neighbours.add(entry)
+            result.append(neigh[0])
+        return result
 
     @classmethod
     def from_shelf_readonly(cls, shelf_file_path, **kwargs):

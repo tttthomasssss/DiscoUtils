@@ -124,6 +124,11 @@ def test_get_nearest_neigh_compare_to_byblo(vectors_c):
                 assert word1 == word2
                 assert abs(sim1 - sim2) < 1e-5
 
+def test_nearest_neighbours_skipping(vectors_c):
+    vectors_c.init_sims()
+    vectors_c.get_nearest_neighbours = vectors_c.get_nearest_neighbours_skipping
+    neigh = vectors_c.get_nearest_neighbours('b/V')
+    assert len(neigh) > 100
 
 def test_get_vector(vectors_c):
     df1 = DataFrame(vectors_c.matrix.A, columns=vectors_c.columns,
