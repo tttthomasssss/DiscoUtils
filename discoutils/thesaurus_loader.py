@@ -440,7 +440,7 @@ class Vectors(Thesaurus):
             return None  # no vector for this
         return self.matrix[row, :]
 
-    def init_sims(self, vocab=None, n_neighbors=200):
+    def init_sims(self, vocab=None, n_neighbors=200, strategy='linear'):
         """
         Prepares a mini thesaurus by placing all entries in `vocab` in a data structure. After that it is possible to
         get the nearest neighbours of an entry that this object has a vector for amongst all entries in `vocab`.
@@ -453,6 +453,7 @@ class Vectors(Thesaurus):
         after removing all lexically overlapping neighbours there would still be some left. Clients are free to slice
         further. Also, one less neighbour will be returned for an entry `E` if
         `len(vocab)==N and E in vocab and n_neighbours == N`
+        :param strategy: how to find nearest neighbours. Linear is the standard implementation, anything
         """
         if not vocab:
             vocab = self.keys()
@@ -478,7 +479,8 @@ class Vectors(Thesaurus):
         self.nn = NearestNeighbors(algorithm='brute',  # 'kd_tree',
                                    metric='cosine',  # 'euclidean',
                                    n_neighbors=n_neighbors).fit(self.matrix[selected_rows, :])
-        self.get_nearest_neighbours = self.get_nearest_neighbours_linear
+        self.get_nearest_neighbours = self.get_nearest_neighbours_linear if strategy=='linear' \
+            else self.get_nearest_neighbours_skipping
         self.get_nearest_neighbours.cache_clear()
 
     @lru_cache(maxsize=2 ** 16)
@@ -508,18 +510,25 @@ class Vectors(Thesaurus):
     @lru_cache(maxsize=2 ** 16)
     def get_nearest_neighbours_skipping(self, entry):
         # accumulate neighbours by repeatedly calling get_nn_linear
+        original_entry = entry
         result = []
         selected_neighbours = set()
-        for i in range(self.n_neighbours - 1): # todo this may never terminate
+        for i in range(self.n_neighbours - 1): # todo this may not return the expected number of neighbours
             neigh = self.get_nearest_neighbours_linear(entry)
             # do not jump back to where we came from
             neigh = [foo for foo in neigh if foo[0] not in selected_neighbours]
             if not self.allow_lexical_overlap:
-                neigh = self.remove_overlapping_neighbours(entry, neigh)
+                # this is needed if we want all neighbours returned to
+                # not overlap with the original entry
+                # without it something like this can happen:
+                # black cat-> big dog-> black panther-> big cat
+                # item I in this list does not overlap with item I-1, but may overlap with item 0
+                # whether I want this is a different question
+                neigh = self.remove_overlapping_neighbours(original_entry, neigh)
 
             entry = neigh[0][0]
             selected_neighbours.add(entry)
-            result.append(neigh[0])
+            result.append((entry, self.cos_similarity(original_entry, entry)))
         return result
 
     @classmethod
