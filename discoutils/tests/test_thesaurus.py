@@ -124,18 +124,30 @@ def test_get_nearest_neigh_compare_to_byblo(vectors_c):
                 assert word1 == word2
                 assert abs(sim1 - sim2) < 1e-5
 
+
 def test_nearest_neighbours_skipping(vectors_c):
     vectors_c.init_sims()
-    print(vectors_c.get_nearest_neighbours('b/V'))
-    print(vectors_c.get_nearest_neighbours('a/J_b/N'))
-    print(vectors_c.get_nearest_neighbours('a/N'))
-    print(vectors_c.get_nearest_neighbours('g/N'))
-    print(vectors_c.get_nearest_neighbours('d/J'))
-    vectors_c.get_nearest_neighbours = vectors_c.get_nearest_neighbours_skipping
-    neigh = vectors_c.get_nearest_neighbours('b/V')
+    print(vectors_c.get_nearest_neighbours_linear('b/V'))
+    print(vectors_c.get_nearest_neighbours_linear('a/J_b/N'))
+    print(vectors_c.get_nearest_neighbours_linear('a/N'))
+    print(vectors_c.get_nearest_neighbours_linear('g/N'))
+    print(vectors_c.get_nearest_neighbours_linear('d/J'))
+    neigh = vectors_c.get_nearest_neighbours_skipping('b/V')
     neigh = [x[0] for x in neigh]
     print(neigh)
-    assert neigh == ['a/J_b/N', 'd/J', 'a/N', 'g/N'] # only four, as need to exclude self
+    # only four neighbours, as there are a total of 5 entries in the entire thesaurus
+    assert neigh == ['a/J_b/N', 'd/J', 'a/N', 'g/N']
+
+
+def test_similarity_calculation_match(vectors_c):
+    """
+    Test that the similarity scores returned by get_nearest_neighbours_linear,
+    get_nearest_neighbours_skipping and cos_similarity match
+    """
+    for method in ['get_nearest_neighbours_linear', 'get_nearest_neighbours_skipping']:
+        for neigh, sim in getattr(vectors_c, method)('b/V'):
+            assert abs(sim - vectors_c.cos_similarity(neigh, 'b/V')) < 1e-5
+
 
 def test_get_vector(vectors_c):
     df1 = DataFrame(vectors_c.matrix.A, columns=vectors_c.columns,
