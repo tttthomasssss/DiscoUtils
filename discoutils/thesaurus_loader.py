@@ -59,7 +59,7 @@ class Thesaurus(object):
 
     @classmethod
     def from_tsv(cls, tsv_file, sim_threshold=0, include_self=False,
-                 lowercasing=False, ngram_separator='_', allow_lexical_overlap=True,
+                 lowercasing=False, ngram_separator='_', pos_separator='/', allow_lexical_overlap=True,
                  row_filter=lambda x, y: True, column_filter=lambda x: True, max_len=50,
                  max_neighbours=1e8, merge_duplicates=False, immutable=True,
                  enforce_word_entry_pos_format=True, gzipped=False, **kwargs):
@@ -100,6 +100,7 @@ class Thesaurus(object):
         if not tsv_file:
             raise ValueError("No thesaurus specified")
 
+        DocumentFeature.recompile_pattern(pos_separator=pos_separator, ngram_separator=ngram_separator)
         to_return = dict()
         logging.info('Loading thesaurus %s from disk', tsv_file)
         gz_file = tsv_file + '.gz'
@@ -134,7 +135,7 @@ class Thesaurus(object):
                     continue
 
                 if tokens[0] != FILTERED:
-                    key = DocumentFeature.smart_lower(tokens[0], ngram_separator, lowercasing)
+                    key = DocumentFeature.smart_lower(tokens[0], lowercasing)
                     dfkey = DocumentFeature.from_string(key) if enforce_word_entry_pos_format else None
 
                     if enforce_word_entry_pos_format and dfkey.type == 'EMPTY':
@@ -146,7 +147,7 @@ class Thesaurus(object):
                         logging.warning('Skipping entry for %s', key)
                         continue
 
-                    to_insert = [(DocumentFeature.smart_lower(word, ngram_separator, lowercasing), float(sim))
+                    to_insert = [(DocumentFeature.smart_lower(word, lowercasing), float(sim))
                                  for (word, sim) in walk_nonoverlapping_pairs(tokens, 1)
                                  if word.lower() != FILTERED and column_filter(word) and float(sim) > sim_threshold]
 
