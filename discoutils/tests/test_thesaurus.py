@@ -126,9 +126,16 @@ def test_get_nearest_neigh_compare_to_byblo(vectors_c):
 
 def test_nearest_neighbours_skipping(vectors_c):
     vectors_c.init_sims()
+    print(vectors_c.get_nearest_neighbours('b/V'))
+    print(vectors_c.get_nearest_neighbours('a/J_b/N'))
+    print(vectors_c.get_nearest_neighbours('a/N'))
+    print(vectors_c.get_nearest_neighbours('g/N'))
+    print(vectors_c.get_nearest_neighbours('d/J'))
     vectors_c.get_nearest_neighbours = vectors_c.get_nearest_neighbours_skipping
     neigh = vectors_c.get_nearest_neighbours('b/V')
-    assert len(neigh) > 100
+    neigh = [x[0] for x in neigh]
+    print(neigh)
+    assert neigh == ['a/J_b/N', 'd/J', 'a/N', 'g/N'] # only four, as need to exclude self
 
 def test_get_vector(vectors_c):
     df1 = DataFrame(vectors_c.matrix.A, columns=vectors_c.columns,

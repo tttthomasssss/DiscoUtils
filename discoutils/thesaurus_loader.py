@@ -513,8 +513,8 @@ class Vectors(Thesaurus):
         # accumulate neighbours by repeatedly calling get_nn_linear
         original_entry = entry
         result = []
-        selected_neighbours = set()
-        for i in range(self.n_neighbours - 1): # todo this may not return the expected number of neighbours
+        selected_neighbours = set([entry])
+        for i in range(self.n_neighbours):
             neigh = self.get_nearest_neighbours_linear(entry)
             # do not jump back to where we came from
             neigh = [foo for foo in neigh if foo[0] not in selected_neighbours]
@@ -526,7 +526,8 @@ class Vectors(Thesaurus):
                 # item I in this list does not overlap with item I-1, but may overlap with item 0
                 # whether I want this is a different question
                 neigh = self.remove_overlapping_neighbours(original_entry, neigh)
-
+            if not neigh:
+                break # we are out of options
             entry = neigh[0][0]
             selected_neighbours.add(entry)
             result.append((entry, self.cos_similarity(original_entry, entry)))
