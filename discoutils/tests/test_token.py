@@ -24,7 +24,7 @@ def test_token_to_string():
 def test_smart_lower():
     # test that the PoS of an n-gram entry is not lowercased
     assert DocumentFeature.smart_lower('Cat/N') == 'cat/N'
-    assert DocumentFeature.smart_lower('Cat/n') == 'cat/N'
+    assert DocumentFeature.smart_lower('Cat/n') == 'cat/n'
     assert DocumentFeature.smart_lower('Red/J_CaT/N') == 'red/J_cat/N'
     # test that features are not touched
     assert DocumentFeature.smart_lower('amod-DEP:former', lowercasing=False) == 'amod-DEP:former'
