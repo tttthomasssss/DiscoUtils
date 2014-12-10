@@ -418,6 +418,28 @@ def test_loading_from_tar():
         assert v == t2[k]
 
 
+def test_from_pandas_data_frame(vectors_c):
+    mat, cols, rows = vectors_c.to_sparse_matrix()
+    df = DataFrame(mat.A, index=rows, columns=cols)
+    v = Vectors.from_pandas_df(df)
+
+    mat1, cols1, rows1 = vectors_c.to_sparse_matrix()
+    assert rows == rows1
+    assert cols == cols1
+    np.testing.assert_almost_equal(mat.A, mat1.A)
+
+    vectors_c.init_sims()
+    v.init_sims()
+    for entry in vectors_c.keys():
+        np.testing.assert_almost_equal(vectors_c.get_vector(entry).A,
+                                       v.get_vector(entry).A)
+
+        n1 = [x[0] for x in vectors_c.get_nearest_neighbours(entry)]
+        n2 = [x[0] for x in v.get_nearest_neighbours(entry)]
+        print(entry, n1, n2)
+        assert n1 == n2
+
+
 class TestLoad_thesauri(TestCase):
     def setUp(self):
         """

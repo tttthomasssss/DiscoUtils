@@ -357,6 +357,13 @@ class Vectors(Thesaurus):
         return Vectors(th._obj, immutable=immutable,
                        allow_lexical_overlap=allow_lexical_overlap)
 
+    @classmethod
+    def from_pandas_df(cls, df, **kwargs):
+        d = df.T.to_dict()
+        for entry in d.keys():
+            d[entry] = sorted(d[entry].items())
+        return Vectors(d, **kwargs)
+
     def to_tsv(self, events_path, entries_path='', features_path='',
                entry_filter=lambda x: True, row_transform=lambda x: x,
                gzipped=False):
@@ -480,7 +487,7 @@ class Vectors(Thesaurus):
         self.nn = NearestNeighbors(algorithm='brute',  # 'kd_tree',
                                    metric='cosine',  # 'euclidean',
                                    n_neighbors=n_neighbors).fit(self.matrix[selected_rows, :])
-        self.get_nearest_neighbours = self.get_nearest_neighbours_linear if strategy=='linear' \
+        self.get_nearest_neighbours = self.get_nearest_neighbours_linear if strategy == 'linear' \
             else self.get_nearest_neighbours_skipping
         self.get_nearest_neighbours.cache_clear()
 
@@ -527,7 +534,7 @@ class Vectors(Thesaurus):
                 # whether I want this is a different question
                 neigh = self.remove_overlapping_neighbours(original_entry, neigh)
             if not neigh:
-                break # we are out of options
+                break  # we are out of options
             entry = neigh[0][0]
             selected_neighbours.add(entry)
             result.append((entry, self.cos_similarity(original_entry, entry)))
