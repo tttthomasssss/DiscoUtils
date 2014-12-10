@@ -8,6 +8,7 @@ import os
 import numpy as np
 import six
 from scipy.spatial.distance import cosine as cos_distance
+from scipy.sparse import csr_matrix
 from discoutils.tokens import DocumentFeature
 from discoutils.collections_utils import walk_nonoverlapping_pairs
 from discoutils.io_utils import write_vectors_to_disk
@@ -295,7 +296,8 @@ class Thesaurus(object):
 
 
 class Vectors(Thesaurus):
-    def __init__(self, d, immutable=True, allow_lexical_overlap=True, **kwargs):
+    def __init__(self, d, immutable=True, allow_lexical_overlap=True,
+                 matrix=None, columns=None, rows=None, **kwargs):
         """
         A Thesaurus extension for storing feature vectors. Provides extra methods, e.g. dissect integration. Each
         entry can be of the form
@@ -317,13 +319,17 @@ class Vectors(Thesaurus):
          compares strings, so `net/N` != `net/J` won't be neighbours, and Thesaurus compares `Token` objects,
          which currently do not take PoS tags into account, so `net/N` !== `net/J`.
         :param immutable: see Thesaurus docs
+        :param matrix: can provide the data as a matrix, to avoid building it ourselves.
         """
         self._obj = d  # the underlying data dict. Do NOT RENAME!
         self.immutable = immutable
         self.allow_lexical_overlap = allow_lexical_overlap
 
         # the matrix representation of this object
-        self.matrix, self.columns, self.row_names = self.to_sparse_matrix()
+        if matrix is None and columns is None and rows is None:
+            self.matrix, self.columns, self.row_names = self.to_sparse_matrix()
+        else:
+            self.matrix, self.columns, self.row_names = matrix, columns, rows
         self.name2row = {feature: i for (i, feature) in enumerate(self.row_names)}
 
     @classmethod
@@ -362,7 +368,8 @@ class Vectors(Thesaurus):
         d = df.T.to_dict()
         for entry in d.keys():
             d[entry] = sorted(d[entry].items())
-        return Vectors(d, **kwargs)
+        return Vectors(d, matrix=csr_matrix(df.values), rows=df.index,
+                       columns=df.columns, **kwargs)
 
     def to_tsv(self, events_path, entries_path='', features_path='',
                entry_filter=lambda x: True, row_transform=lambda x: x,
