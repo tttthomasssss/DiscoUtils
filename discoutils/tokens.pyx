@@ -63,7 +63,7 @@ class DocumentFeature(object):
                     raise ValueError(junk)
                 if not word:
                     break
-                tokens.append(Token(word, pos.upper(), pos_separator=cls.pos_separator))
+                tokens.append(Token(word, pos, pos_separator=cls.pos_separator))
             type = cls._TYPES.get(type,
                                   ('EMPTY', '1-GRAM', '2-GRAM', '3-GRAM')[len(tokens)])
             return DocumentFeature(type, tuple(tokens))
@@ -95,7 +95,7 @@ class DocumentFeature(object):
                 # no pos
                 word, pos = words_with_pos, ''
 
-            words.append(cls.pos_separator.join([word.lower(), pos.upper()]) if pos else word.lower())
+            words.append(cls.pos_separator.join([word.lower(), pos]) if pos else word.lower())
 
         return cls.ngram_separator.join(words)
 
