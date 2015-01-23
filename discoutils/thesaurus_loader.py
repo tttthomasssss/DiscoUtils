@@ -1,9 +1,14 @@
 # coding=utf-8
 from collections import Counter
+import contextlib
+import gzip
 import logging
 import shelve
-import numpy
+import os
+import numpy as np
 import six
+from scipy.spatial.distance import cosine as cos_distance
+from scipy.sparse import csr_matrix
 from discoutils.tokens import DocumentFeature
 from discoutils.collections_utils import walk_nonoverlapping_pairs
 from discoutils.io_utils import write_vectors_to_disk
@@ -55,15 +60,16 @@ class Thesaurus(object):
 
     @classmethod
     def from_tsv(cls, tsv_file, sim_threshold=0, include_self=False,
-                 lowercasing=False, ngram_separator='_', allow_lexical_overlap=True,
+                 lowercasing=False, ngram_separator='_', pos_separator='/', allow_lexical_overlap=True,
                  row_filter=lambda x, y: True, column_filter=lambda x: True, max_len=50,
                  max_neighbours=1e8, merge_duplicates=False, immutable=True,
-                 enforce_word_entry_pos_format=True, **kwargs):
+                 enforce_word_entry_pos_format=True, gzipped=False, **kwargs):
         """
         Create a Thesaurus by parsing a Byblo-compatible TSV files (events or sims).
         If duplicate values are encoutered during parsing, only the latest will be kept.
 
-        :param tsv_file: path to input TSV file
+        :param tsv_file: path to input TSV file. If `gzipped` is True, this method searches for `tsv_file + '.gz'` and
+        uses it if it exists, otherwise it falls back to `tsv_file` and assumes it is gzipped.
         :type tsv_file:  str
         :param sim_threshold: min similarity between an entry and its neighbour for the neighbour to be included
         :type sim_threshold: float
@@ -89,13 +95,19 @@ class Thesaurus(object):
         The former is appropriate for `Thesaurus`, and the latter for `Vectors`
         :param enforce_word_entry_pos_format: if true, entries that are not in a `word/POS` format are skipped. This
         must be true for `allow_lexical_overlap` to work.
+        :param gzipped: whether the file is compressed by running `gzip file.txt`
         """
 
         if not tsv_file:
             raise ValueError("No thesaurus specified")
 
+        DocumentFeature.recompile_pattern(pos_separator=pos_separator, ngram_separator=ngram_separator)
         to_return = dict()
         logging.info('Loading thesaurus %s from disk', tsv_file)
+        gz_file = tsv_file + '.gz'
+        if os.path.exists(gz_file) and gzipped:
+            logging.warning('Using .gz version of thesaurus')
+            tsv_file = gz_file
         if not allow_lexical_overlap:
             logging.warning('DISALLOWING LEXICAL OVERLAP')
 
@@ -103,9 +115,20 @@ class Thesaurus(object):
             raise ValueError('allow_lexical_overlap requires entries to be converted to a DocumentFeature. '
                              'Please enable enforce_word_entry_pos_format')
         FILTERED = '___FILTERED___'.lower()
-        with open(tsv_file) as infile:
-            for line in infile:
-                tokens = line.strip().split('\t')
+
+        if gzipped:
+            fhandle = gzip.open(tsv_file)
+        else:
+            fhandle = open(tsv_file)
+
+        with fhandle as infile:
+            for line in infile.readlines():
+                if gzipped:
+                    # this is a byte steam, needs to be decoded
+                    tokens = line.decode('UTF8').strip().split('\t')
+                else:
+                    tokens = line.strip().split('\t')
+
                 if len(tokens) % 2 == 0:
                     # must have an odd number of things, one for the entry
                     # and pairs for (neighbour, similarity)
@@ -113,7 +136,7 @@ class Thesaurus(object):
                     continue
 
                 if tokens[0] != FILTERED:
-                    key = DocumentFeature.smart_lower(tokens[0], ngram_separator, lowercasing)
+                    key = DocumentFeature.smart_lower(tokens[0], lowercasing)
                     dfkey = DocumentFeature.from_string(key) if enforce_word_entry_pos_format else None
 
                     if enforce_word_entry_pos_format and dfkey.type == 'EMPTY':
@@ -125,7 +148,7 @@ class Thesaurus(object):
                         logging.warning('Skipping entry for %s', key)
                         continue
 
-                    to_insert = [(DocumentFeature.smart_lower(word, ngram_separator, lowercasing), float(sim))
+                    to_insert = [(DocumentFeature.smart_lower(word, lowercasing), float(sim))
                                  for (word, sim) in walk_nonoverlapping_pairs(tokens, 1)
                                  if word.lower() != FILTERED and column_filter(word) and float(sim) > sim_threshold]
 
@@ -165,7 +188,7 @@ class Thesaurus(object):
             d[str(entry)] = features
         d.close()
 
-    def to_tsv(self, filename):
+    def to_tsv(self, filename, gzipped=False):
         """
         Writes this thesaurus to a Byblo-compatible sims file like the one it was most likely read from.  Neighbours
         are written in the order that they appear in.
@@ -173,13 +196,17 @@ class Thesaurus(object):
         :return: the file name
         """
         logging.warning('row_transform and entry_filter options are ignored in order to use preserve_order')
-        with open(filename, 'w') as outfile:
+        if gzipped:
+            f = gzip.open(filename, 'w')
+        else:
+            f = open(filename, 'w')
+        with contextlib.closing(f) as outfile:
             for entry, vector in self._obj.items():
                 features_str = '\t'.join(['%s\t%f' % foo for foo in vector])
                 outfile.write('%s\t%s\n' % (entry, features_str))
         return filename
 
-    def to_sparse_matrix(self, row_transform=None, dtype=numpy.float):
+    def to_sparse_matrix(self, row_transform=None, dtype=np.float):
         """
         Converts the vectors held in this object to a scipy sparse matrix. Raises a ValueError if
         the thesaurus is empty
@@ -245,7 +272,7 @@ class Thesaurus(object):
 
         del self._obj[key]
         if hasattr(self, 'matrix'):
-            mask = numpy.ones(self.matrix.shape[0], dtype=bool)
+            mask = np.ones(self.matrix.shape[0], dtype=bool)
             mask[self.name2row[key]] = False
             self.matrix = self.matrix[mask, :]
 
@@ -269,7 +296,8 @@ class Thesaurus(object):
 
 
 class Vectors(Thesaurus):
-    def __init__(self, d, immutable=True, allow_lexical_overlap=True, **kwargs):
+    def __init__(self, d, immutable=True, allow_lexical_overlap=True,
+                 matrix=None, columns=None, rows=None, **kwargs):
         """
         A Thesaurus extension for storing feature vectors. Provides extra methods, e.g. dissect integration. Each
         entry can be of the form
@@ -291,13 +319,17 @@ class Vectors(Thesaurus):
          compares strings, so `net/N` != `net/J` won't be neighbours, and Thesaurus compares `Token` objects,
          which currently do not take PoS tags into account, so `net/N` !== `net/J`.
         :param immutable: see Thesaurus docs
+        :param matrix: can provide the data as a matrix, to avoid building it ourselves.
         """
         self._obj = d  # the underlying data dict. Do NOT RENAME!
         self.immutable = immutable
         self.allow_lexical_overlap = allow_lexical_overlap
 
         # the matrix representation of this object
-        self.matrix, self.columns, self.row_names = self.to_sparse_matrix()
+        if matrix is None and columns is None and rows is None:
+            self.matrix, self.columns, self.row_names = self.to_sparse_matrix()
+        else:
+            self.matrix, self.columns, self.row_names = matrix, columns, rows
         self.name2row = {feature: i for (i, feature) in enumerate(self.row_names)}
 
     @classmethod
@@ -307,7 +339,7 @@ class Vectors(Thesaurus):
                  column_filter=lambda x: True,
                  max_len=50, max_neighbours=1e8,
                  merge_duplicates=True,
-                 immutable=True, **kwargs):
+                 immutable=True, gzipped=False, **kwargs):
         """
         Changes the default value of the sim_threshold parameter of super. Features can have any value, including
         negative (especially when working with neural embeddings).
@@ -322,7 +354,8 @@ class Vectors(Thesaurus):
                                 allow_lexical_overlap=True,
                                 row_filter=row_filter, column_filter=column_filter,
                                 max_len=max_len, max_neighbours=max_neighbours,
-                                merge_duplicates=merge_duplicates, **kwargs)
+                                merge_duplicates=merge_duplicates, gzipped=gzipped,
+                                **kwargs)
 
         # get underlying dict from thesaurus
         if not th._obj:
@@ -330,8 +363,17 @@ class Vectors(Thesaurus):
         return Vectors(th._obj, immutable=immutable,
                        allow_lexical_overlap=allow_lexical_overlap)
 
+    @classmethod
+    def from_pandas_df(cls, df, **kwargs):
+        d = df.T.to_dict()
+        for entry in d.keys():
+            d[entry] = sorted(d[entry].items())
+        return Vectors(d, matrix=csr_matrix(df.values), rows=df.index,
+                       columns=df.columns, **kwargs)
+
     def to_tsv(self, events_path, entries_path='', features_path='',
-               entry_filter=lambda x: True, row_transform=lambda x: x):
+               entry_filter=lambda x: True, row_transform=lambda x: x,
+               gzipped=False):
         """
         Writes this thesaurus to Byblo-compatible file like the one it was most likely read from. In the
         process converts all entries to a DocumentFeature, so all entries must be parsable into one. May reorder the
@@ -349,7 +391,7 @@ class Vectors(Thesaurus):
         rows = {i: DocumentFeature.from_string(row_transform(feat)) for (feat, i) in self.name2row.items()}
         write_vectors_to_disk(self.matrix.tocoo(), rows, self.columns, events_path,
                               features_path=features_path, entries_path=entries_path,
-                              entry_filter=entry_filter)
+                              entry_filter=entry_filter, gzipped=gzipped)
         return events_path
 
     def to_dissect_core_space(self):
@@ -401,17 +443,19 @@ class Vectors(Thesaurus):
         Returns a vector for the given entry. This differs from self.__getitem__ in that it returns a sparse matrix
         instead of a list of (feature, count) tuples
         :param entry: the entry
-        :type entry: str
+        :type entry: str or DocumentFeature
         :return: vector for the entry
         :rtype: scipy.sparse.csr_matrix, or None
         """
+        if isinstance(entry, DocumentFeature):
+            entry = entry.tokens_as_str()
         try:
             row = self.name2row[entry]
         except KeyError:
             return None  # no vector for this
         return self.matrix[row, :]
 
-    def init_sims(self, vocab=None, n_neighbors=200):
+    def init_sims(self, vocab=None, n_neighbors=200, strategy='linear'):
         """
         Prepares a mini thesaurus by placing all entries in `vocab` in a data structure. After that it is possible to
         get the nearest neighbours of an entry that this object has a vector for amongst all entries in `vocab`.
@@ -424,6 +468,7 @@ class Vectors(Thesaurus):
         after removing all lexically overlapping neighbours there would still be some left. Clients are free to slice
         further. Also, one less neighbour will be returned for an entry `E` if
         `len(vocab)==N and E in vocab and n_neighbours == N`
+        :param strategy: how to find nearest neighbours. Linear is the standard implementation, anything
         """
         if not vocab:
             vocab = self.keys()
@@ -442,21 +487,23 @@ class Vectors(Thesaurus):
             n_neighbors = len(selected_rows)
         self.n_neighbours = n_neighbors
 
-        # todo BallTree/KDTree do not support cosine out of the box. algorithm='brute' may be slower overall
-        # it's faster to build, O(1), and slower to query
-        self.nn = NearestNeighbors(algorithm='brute',
-                                   metric='cosine',
+        # todo BallTree/KDTree do not support cosine out of the box. algorithm='brute' is slower overall
+        # for larger datasets. Tt's faster to build, O(1), and slower to query. If using euclidean as an
+        # alternative, change 1-dist to dist in get_nearest_neighbour. Also, reduce the default value of
+        # k from 200 to get another boost in performance
+        self.nn = NearestNeighbors(algorithm='brute',  # 'kd_tree',
+                                   metric='cosine',  # 'euclidean',
                                    n_neighbors=n_neighbors).fit(self.matrix[selected_rows, :])
+        self.get_nearest_neighbours = self.get_nearest_neighbours_linear if strategy == 'linear' \
+            else self.get_nearest_neighbours_skipping
         self.get_nearest_neighbours.cache_clear()
 
-    @lru_cache(maxsize=2 ** 13)
-    def get_nearest_neighbours(self, entry):
+    @lru_cache(maxsize=2 ** 16)
+    def get_nearest_neighbours_linear(self, entry):
         """
         Get the nearest neighbours of `entry` amongst all entries that `init_sims` was called with. The top
         neighbour will never be the entry itself (to match Byblo's behaviour)
         """
-        if isinstance(entry, DocumentFeature):
-            entry = entry.tokens_as_str()
         if not hasattr(self, 'nn'):
             logging.warning('init_sims has not been called. Calling with default settings.')
             self.init_sims()
@@ -471,13 +518,46 @@ class Vectors(Thesaurus):
         neigh = [(self.selected_row2name[indices[0][i]], 1 - distances[0][i]) for i in range(indices.shape[1])]
         if not self.allow_lexical_overlap:
             neigh = self.remove_overlapping_neighbours(entry, neigh)
-        if neigh[0][0] == entry:
+        if neigh and neigh[0][0] == entry:  # avoid popping an empty list
             neigh.pop(0)
         return neigh[:self.n_neighbours]
+
+    @lru_cache(maxsize=2 ** 16)
+    def get_nearest_neighbours_skipping(self, entry):
+        # accumulate neighbours by repeatedly calling get_nn_linear
+        original_entry = entry
+        result = []
+        selected_neighbours = set([entry])
+        for i in range(self.n_neighbours):
+            neigh = self.get_nearest_neighbours_linear(entry)
+            # do not jump back to where we came from
+            neigh = [foo for foo in neigh if foo[0] not in selected_neighbours]
+            if not self.allow_lexical_overlap:
+                # this is needed if we want all neighbours returned to
+                # not overlap with the original entry
+                # without it something like this can happen:
+                # black cat-> big dog-> black panther-> big cat
+                # item I in this list does not overlap with item I-1, but may overlap with item 0
+                # whether I want this is a different question
+                neigh = self.remove_overlapping_neighbours(original_entry, neigh)
+            if not neigh:
+                break  # we are out of options
+            entry = neigh[0][0]
+            selected_neighbours.add(entry)
+            result.append((entry, self.cos_similarity(original_entry, entry)))
+        return result
 
     @classmethod
     def from_shelf_readonly(cls, shelf_file_path, **kwargs):
         return Vectors(shelve.open(shelf_file_path, flag='r'), **kwargs)  # read only
+
+    def cos_similarity(self, first, second):
+        v1 = self.get_vector(first)
+        v2 = self.get_vector(second)
+        if v1 is not None and v2 is not None:
+            return 1 - cos_distance(v1.A, v2.A)
+        else:
+            return None
 
     def __str__(self):
         return '[%d vectors]' % len(self)

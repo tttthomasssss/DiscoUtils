@@ -1,3 +1,5 @@
+import magic
+
 __author__ = 'miroslavbatchkarov'
 
 import os
@@ -61,3 +63,6 @@ def temp_chdir(path):
         yield
     finally:
         os.chdir(starting_directory)
+
+def is_gzipped(path_to_file):
+    return b'gzip compressed data' in magic.from_file(path_to_file)

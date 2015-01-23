@@ -107,6 +107,7 @@ def test_nearest_neighbours_too_few_neighbours(vectors_c):
     neigh = vectors_c.get_nearest_neighbours('b/V')
     assert len(neigh) == 2
 
+
 def test_get_nearest_neigh_compare_to_byblo(vectors_c):
     thes = 'discoutils/tests/resources/thesaurus_exp0-0c/test.sims.neighbours.strings'
     if not os.path.exists(thes):
@@ -124,6 +125,30 @@ def test_get_nearest_neigh_compare_to_byblo(vectors_c):
                 assert abs(sim1 - sim2) < 1e-5
 
 
+def test_nearest_neighbours_skipping(vectors_c):
+    vectors_c.init_sims()
+    print(vectors_c.get_nearest_neighbours_linear('b/V'))
+    print(vectors_c.get_nearest_neighbours_linear('a/J_b/N'))
+    print(vectors_c.get_nearest_neighbours_linear('a/N'))
+    print(vectors_c.get_nearest_neighbours_linear('g/N'))
+    print(vectors_c.get_nearest_neighbours_linear('d/J'))
+    neigh = vectors_c.get_nearest_neighbours_skipping('b/V')
+    neigh = [x[0] for x in neigh]
+    print(neigh)
+    # only four neighbours, as there are a total of 5 entries in the entire thesaurus
+    assert neigh == ['a/J_b/N', 'd/J', 'a/N', 'g/N']
+
+
+def test_similarity_calculation_match(vectors_c):
+    """
+    Test that the similarity scores returned by get_nearest_neighbours_linear,
+    get_nearest_neighbours_skipping and cos_similarity match
+    """
+    for method in ['get_nearest_neighbours_linear', 'get_nearest_neighbours_skipping']:
+        for neigh, sim in getattr(vectors_c, method)('b/V'):
+            assert abs(sim - vectors_c.cos_similarity(neigh, 'b/V')) < 1e-5
+
+
 def test_get_vector(vectors_c):
     df1 = DataFrame(vectors_c.matrix.A, columns=vectors_c.columns,
                     index=map(itemgetter(0), sorted(vectors_c.rows.items(), key=itemgetter(1))))
@@ -131,6 +156,12 @@ def test_get_vector(vectors_c):
         a = vectors_c.get_vector(entry).A.ravel()
         b = df1.loc[entry].values
         assert_array_almost_equal(a, b)
+
+
+def test_cosine_similarity(vectors_c):
+    assert vectors_c.cos_similarity('a/N', 'g/N') > 0
+    assert vectors_c.cos_similarity('a/N', 'a/N') == 1.0
+    assert vectors_c.cos_similarity('afdsf', 'fad') is None
 
 
 def test_loading_bigram_thesaurus(thesaurus_c):
@@ -236,8 +267,8 @@ def test_vectors_to_tsv(vectors_c, tmpdir):
     """
     # these are feature vectors, columns(features) can be reordered
     filename = str(tmpdir.join('outfile.txt'))
-    vectors_c.to_tsv(filename)
-    from_disk = Vectors.from_tsv(filename)
+    vectors_c.to_tsv(filename, gzipped=True)
+    from_disk = Vectors.from_tsv(filename, gzipped=True)
 
     # can't just assert from_disk == thesaurus_c, because to_tsv may reorder the columns
     for k, v in vectors_c.items():
@@ -377,6 +408,36 @@ def test_max_num_neighbours_and_no_lexical_overlap():
                            max_neighbours=1)
     assert t['trade/N_law/N'][0][0] == 'law/N'
     assert len(t['trade/N_law/N']) == 1
+
+
+def test_loading_from_tar():
+    t1 = Thesaurus.from_tsv('discoutils/tests/resources/exp0-0a.strings', gzipped=False)
+    t2 = Thesaurus.from_tsv('discoutils/tests/resources/exp0-0a.strings.gz', gzipped=True)
+    for k, v in t1.items():
+        assert k in t2
+        assert v == t2[k]
+
+
+def test_from_pandas_data_frame(vectors_c):
+    mat, cols, rows = vectors_c.to_sparse_matrix()
+    df = DataFrame(mat.A, index=rows, columns=cols)
+    v = Vectors.from_pandas_df(df)
+
+    mat1, cols1, rows1 = vectors_c.to_sparse_matrix()
+    assert rows == rows1
+    assert cols == cols1
+    np.testing.assert_almost_equal(mat.A, mat1.A)
+
+    vectors_c.init_sims()
+    v.init_sims()
+    for entry in vectors_c.keys():
+        np.testing.assert_almost_equal(vectors_c.get_vector(entry).A,
+                                       v.get_vector(entry).A)
+
+        n1 = [x[0] for x in vectors_c.get_nearest_neighbours(entry)]
+        n2 = [x[0] for x in v.get_nearest_neighbours(entry)]
+        print(entry, n1, n2)
+        assert n1 == n2
 
 
 class TestLoad_thesauri(TestCase):

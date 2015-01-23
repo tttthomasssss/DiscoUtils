@@ -61,7 +61,7 @@ def test_application_after_learning(tmpdir, first, second, exp_row_len):
     # when made into a thesaurus, the reduced matrix will have some duplicates
     # these will be summed out, leaving us with a matrix of a specific size
     t = Vectors.from_tsv(str(tmpfile) + '-SVD2.events.filtered.strings',
-                           lowercasing=False)
+                           lowercasing=False, gzipped=True)
     mat, cols, rows = t.to_sparse_matrix()
     assert mat.shape == (exp_row_len, 2)
 
@@ -79,7 +79,8 @@ def test_application_after_learning_with_selective_write(tmpdir):
                reduce_to=[2], # some small number, not what we are testing for here
                apply_to='discoutils/tests/resources/exp0-0c.strings',
                write=w)
-        t = Vectors.from_tsv(str(tmpfile) + '-SVD2.events.filtered.strings', lowercasing=False)
+        t = Vectors.from_tsv(str(tmpfile) + '-SVD2.events.filtered.strings',
+                             lowercasing=False, gzipped=True)
         mat, _, _ = t.to_sparse_matrix()
         assert mat.shape == (exp_row_len, 2)
 

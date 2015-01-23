@@ -25,9 +25,23 @@ class DocumentFeature(object):
         self.tokens = tokens
 
     _TYPES = dict([('NVN', 'SVO'), ('JN', 'AN'), ('VN', 'VO'), ('NN', 'NN')])
-    #  not an underscore + text + underscore or end of line
-    #  see re.split documentation on capturing (the first two) and non-capturing groups (the last one)
-    _TOKEN_RE = re.compile(r'([^/_]+)/([A-Z]+)(?:_|$)')
+    # awful code, duplicated below
+    pos_separator = '/'
+    ngram_separator = '_'
+    _TOKEN_RE = re.compile(r'([^{0}{1}]+){0}([a-zA-Z]+)(?:{1}|$)'.format(pos_separator, ngram_separator))
+
+    @classmethod
+    def recompile_pattern(cls, pos_separator='/', ngram_separator='_'):
+        """
+        If you want to use non-standard separators, call this method first
+        :param pos_separator:
+        :param ngram_separator:
+        """
+        #  not an underscore + text + underscore or end of line
+        #  see re.split documentation on capturing (the first two) and non-capturing groups (the last one)
+        cls._TOKEN_RE = re.compile(r'([^{0}{1}]+){0}([a-zA-Z]+)(?:{1}|$)'.format(pos_separator, ngram_separator))
+        cls.pos_separator = pos_separator
+        cls.ngram_separator = ngram_separator
 
     @classmethod
     def from_string(cls, string):
@@ -37,9 +51,11 @@ class DocumentFeature(object):
         :param string: the string to parse
         :return: DocumentFeature corresponding to the input string or DocumentFeature(type, tuple(tokens))
         """
+        if isinstance(string, DocumentFeature):
+            return string
         try:
             match = cls._TOKEN_RE.split(string, 3)
-            type = ''.join(match[2::3])
+            type = ''.join(x.upper() for x in match[2::3])
             match = iter(match)
             tokens = []
             for (junk, word, pos) in zip_longest(match, match, match):
@@ -47,11 +63,11 @@ class DocumentFeature(object):
                     raise ValueError(junk)
                 if not word:
                     break
-                tokens.append(Token(word, pos))
+                tokens.append(Token(word, pos, pos_separator=cls.pos_separator))
             type = cls._TYPES.get(type,
                                   ('EMPTY', '1-GRAM', '2-GRAM', '3-GRAM')[len(tokens)])
             return DocumentFeature(type, tuple(tokens))
-        except:
+        except Exception as e:
             logging.error('Cannot create token out of string %s', string)
             return DocumentFeature('EMPTY', tuple())
 
@@ -60,28 +76,28 @@ class DocumentFeature(object):
         Represents the features of this document as a human-readable string
         DocumentFeature('1-GRAM', ('X', 'Y',)) -> 'X_Y'
         """
-        return '_'.join(str(t) for t in self.tokens)
+        return self.ngram_separator.join(str(t) for t in self.tokens)
 
     @classmethod
-    def smart_lower(cls, words_with_pos, separator='_', lowercasing=True):
+    def smart_lower(cls, words_with_pos, lowercasing=True):
         """
         Lowercase just the words and not their PoS tags
         """
         if not lowercasing:
             return words_with_pos
 
-        unigrams = words_with_pos.split(separator)
+        unigrams = words_with_pos.split(cls.ngram_separator)
         words = []
         for unigram in unigrams:
             try:
-                word, pos = unigram.split('/')
+                word, pos = unigram.split(cls.pos_separator)
             except ValueError:
                 # no pos
                 word, pos = words_with_pos, ''
 
-            words.append('/'.join([word.lower(), pos]) if pos else word.lower())
+            words.append(cls.pos_separator.join([word.lower(), pos]) if pos else word.lower())
 
-        return separator.join(words)
+        return cls.ngram_separator.join(words)
 
     def __len__(self):
         return len(self.tokens)
@@ -143,17 +159,23 @@ class Token(object):
     """
     Represents a text token. Stores information about the text, PoS/NER tag and index in a sentence.
     Tokens are printed with their PoS tag, e.g. cat/N, and ordered alphabetically by text,
-    PoS tag and NER tag. The index field is ignored by __hash__, __eq__ and the like
+    PoS tag and NER tag.
+
+    The index field may ignored by __hash__, __eq__ and the like. This is because it is irrelevant
+    when checking if a token is contained in a sentence- most of the time where exactly is not
+    important. However, the index matters when building a dependency tree of looking up the
+    neighbours of a given token.
 
     """
-    def __init__(self, text, pos, index=0, ner='O'):
+    def __init__(self, text, pos, index='any', ner='O', pos_separator='/', **kwargs):
         self.text = text
         self.pos = pos
         self.index = index  # useful when parsing CONLL
         self.ner = ner
+        self.pos_separator = pos_separator
 
     def __str__(self):
-        return '{}/{}'.format(self.text, self.pos) if self.pos else self.text
+        return '{}{}{}'.format(self.text, self.pos_separator, self.pos) if self.pos else self.text
 
     def __repr__(self):
         return self.__str__()
@@ -162,7 +184,10 @@ class Token(object):
         return (not self < other) and (not other < self)
 
     def __lt__(self, other):
-        return self.text < other.text
+        if self.index == 'any' or other.index == 'any':
+            return self.text < other.text
+        else:
+            return (self.text, self.index) < (other.text, other.index)
 
     def __hash__(self):
         return hash((self.text, self.pos))
