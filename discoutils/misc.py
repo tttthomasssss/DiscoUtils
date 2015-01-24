@@ -64,5 +64,17 @@ def temp_chdir(path):
     finally:
         os.chdir(starting_directory)
 
+def mkdirs_if_not_exists(dir):
+    """
+    Creates a directory (and all intermediate directories) if it doesn't exists.
+    Behaves like mkdir -p, and is prone to race conditions
+
+    Source: http://stackoverflow.com/q/273192/419338
+    :param dir:
+    :return:
+    """
+    if not (os.path.exists(dir) and os.path.isdir(dir)):
+        os.makedirs(dir)
+
 def is_gzipped(path_to_file):
     return b'gzip compressed data' in magic.from_file(path_to_file)
