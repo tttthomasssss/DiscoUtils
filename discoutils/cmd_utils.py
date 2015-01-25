@@ -116,7 +116,7 @@ def unindex_all_byblo_vectors(outfile_name):
         with open(my_file) as infile:
             lines = infile.readlines()
 
-        with open(my_file, 'w+b') as outfile:
+        with open(my_file, 'w') as outfile:
             for line in lines:
                 if '__FILTERED__' not in line:
                     outfile.write(line)
@@ -127,7 +127,7 @@ def unindex_all_byblo_vectors(outfile_name):
     with open(events_file) as infile:
         lines = infile.readlines()
 
-    with open(events_file, 'w+b') as outfile:
+    with open(events_file, 'w') as outfile:
         for line in lines:
             if not line.startswith('___FILTERED___'):
                 outfile.write('\t'.join(line.split('\t')[:-2]))
