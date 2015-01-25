@@ -79,12 +79,12 @@ def parse_byblo_conf_file(path):
     return args
 
 
-def run_and_log_output(cmd_string):
+def run_and_log_output(cmd_string, *args, **kwargs):
     """
     Runs a command with iterpipes and logs the output
     """
-    logging.info('Running %s', cmd_string)
-    c = iterpipes.cmd(cmd_string)
+    c = iterpipes.cmd(cmd_string, *args, **kwargs)
+    logging.info('Running %s', c)
     out = iterpipes.run(c)
     for line in out:
         logging.info(line)
