@@ -22,7 +22,7 @@ setup(
     author_email=['J.E.Weeds@sussex.ac.uk', 'M.Batchkarov@sussex.ac.uk'],
     tests_require=['pytest>=2.4.2'],
     cmdclass={'test': PyTest},
-    install_requires=['pytest', 'Cython', 'iterpipes', 'numpy', 'scipy',
+    install_requires=['pytest', 'Cython', 'iterpipes3', 'numpy', 'scipy',
                       'scikit-learn', 'six', 'python-magic'],
     ext_modules=cythonize(["discoutils/tokens.pyx"])
 )
