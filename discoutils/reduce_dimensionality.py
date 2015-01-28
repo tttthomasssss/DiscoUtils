@@ -73,7 +73,7 @@ def _do_svd_single(mat, n_components):
         logging.error('Cannot reduce dimensionality from %d to %d', mat.shape[1], n_components)
         return None, None
 
-    method = TruncatedSVD(n_components)
+    method = TruncatedSVD(n_components, random_state=0)
     logging.info('Reducing dimensionality of matrix of shape %r', mat.shape)
     start = time.time()
     reduced_mat = method.fit_transform(mat)
