@@ -7,7 +7,7 @@ import shelve
 import os
 import numpy as np
 import six
-from scipy.spatial.distance import cosine as cos_distance
+from scipy.spatial.distance import euclidean
 from scipy.sparse import csr_matrix
 from discoutils.tokens import DocumentFeature
 from discoutils.collections_utils import walk_nonoverlapping_pairs
@@ -455,7 +455,7 @@ class Vectors(Thesaurus):
             return None  # no vector for this
         return self.matrix[row, :]
 
-    def init_sims(self, vocab=None, n_neighbors=200, strategy='linear'):
+    def init_sims(self, vocab=None, n_neighbors=10, strategy='linear', knn='brute'):
         """
         Prepares a mini thesaurus by placing all entries in `vocab` in a data structure. After that it is possible to
         get the nearest neighbours of an entry that this object has a vector for amongst all entries in `vocab`.
@@ -491,9 +491,15 @@ class Vectors(Thesaurus):
         # for larger datasets. Tt's faster to build, O(1), and slower to query. If using euclidean as an
         # alternative, change 1-dist to dist in get_nearest_neighbour. Also, reduce the default value of
         # k from 200 to get another boost in performance
-        self.nn = NearestNeighbors(algorithm='brute',  # 'kd_tree',
-                                   metric='cosine',  # 'euclidean',
-                                   n_neighbors=n_neighbors).fit(self.matrix[selected_rows, :])
+        X = self.matrix[selected_rows, :]
+        if X.shape[1] < 1000:
+            # if the matrix is smallish, make it dense and used KD Tree, it's 20-100x faster to query
+            # and 4x slower to build
+            X = X.A
+            knn = 'kd_tree'
+        self.nn = NearestNeighbors(algorithm=knn,
+                                   metric='l2',
+                                   n_neighbors=n_neighbors).fit(X)
         self.get_nearest_neighbours = self.get_nearest_neighbours_linear if strategy == 'linear' \
             else self.get_nearest_neighbours_skipping
         self.get_nearest_neighbours.cache_clear()
@@ -501,8 +507,9 @@ class Vectors(Thesaurus):
     @lru_cache(maxsize=2 ** 16)
     def get_nearest_neighbours_linear(self, entry):
         """
-        Get the nearest neighbours of `entry` amongst all entries that `init_sims` was called with. The top
-        neighbour will never be the entry itself (to match Byblo's behaviour)
+        Get the nearest neighbours of `entry` amongst all entries that `init_sims` was called with. Resutls are
+        sorted in order of increasing distance. The top neighbour will never be the entry itself (to match
+        Byblo's behaviour)
         """
         if not hasattr(self, 'nn'):
             logging.warning('init_sims has not been called. Calling with default settings.')
@@ -513,9 +520,9 @@ class Vectors(Thesaurus):
         # if `entry` is contained in the list of neighbours, it will be popped and one less neighbour will be returned
         # so we need to ask for one extra neighbour, but without exceeding the number of available neighbours
         n_neigh = min(self.n_neighbours + (entry in self.search_pool), len(self.search_pool))
-        distances, indices = self.nn.kneighbors(self.get_vector(entry),
+        distances, indices = self.nn.kneighbors(self.get_vector(entry).toarray(),
                                                 n_neighbors=n_neigh)
-        neigh = [(self.selected_row2name[indices[0][i]], 1 - distances[0][i]) for i in range(indices.shape[1])]
+        neigh = [(self.selected_row2name[indices[0][i]], distances[0][i]) for i in range(indices.shape[1])]
         if not self.allow_lexical_overlap:
             neigh = self.remove_overlapping_neighbours(entry, neigh)
         if neigh and neigh[0][0] == entry:  # avoid popping an empty list
@@ -544,18 +551,18 @@ class Vectors(Thesaurus):
                 break  # we are out of options
             entry = neigh[0][0]
             selected_neighbours.add(entry)
-            result.append((entry, self.cos_similarity(original_entry, entry)))
+            result.append((entry, self.euclidean_distance(original_entry, entry)))
         return result
 
     @classmethod
     def from_shelf_readonly(cls, shelf_file_path, **kwargs):
         return Vectors(shelve.open(shelf_file_path, flag='r'), **kwargs)  # read only
 
-    def cos_similarity(self, first, second):
+    def euclidean_distance(self, first, second):
         v1 = self.get_vector(first)
         v2 = self.get_vector(second)
         if v1 is not None and v2 is not None:
-            return 1 - cos_distance(v1.A, v2.A)
+            return euclidean(v1.A, v2.A)
         else:
             return None
 

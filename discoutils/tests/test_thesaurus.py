@@ -49,9 +49,9 @@ def thes_with_overlap():
 
 def test_nearest_neighbours(vectors_c):
     entries_to_include = ['b/V', 'g/N', 'a/N']
-    from sklearn.metrics.pairwise import cosine_distances
+    from sklearn.metrics.pairwise import euclidean_distances
 
-    sims_df = DataFrame(1 - cosine_distances(vectors_c.matrix), index=vectors_c.row_names, columns=vectors_c.row_names)
+    sims_df = DataFrame(euclidean_distances(vectors_c.matrix), index=vectors_c.row_names, columns=vectors_c.row_names)
     print('Cosine sims:\n', sims_df)  # all cosine sim in a readable format
 
     vec_df = DataFrame(vectors_c.matrix.A, columns=vectors_c.columns, index=vectors_c.row_names)
@@ -62,7 +62,7 @@ def test_nearest_neighbours(vectors_c):
     neigh = vectors_c.get_nearest_neighbours('b/V')
     assert len(neigh) == 1
     assert neigh[0][0] == 'a/J_b/N'  # seeking nearest neighbour of something we trained on
-    assert abs(neigh[0][1] - 0.976246) < 1e-5
+    assert abs(neigh[0][1] - 0.223607) < 1e-5
     assert vectors_c.nn._fit_X.shape == (5, 5)
 
     vectors_c.init_sims(entries_to_include, n_neighbors=1)
@@ -70,28 +70,28 @@ def test_nearest_neighbours(vectors_c):
     assert len(neigh) == 1
     assert len(neigh) == 1
     assert neigh[0][0] == 'a/N'  # seeking nearest neighbour of something we trained on
-    assert abs(neigh[0][1] - 0.822434) < 1e-5
+    assert abs(neigh[0][1] - 0.387298) < 1e-5
     assert vectors_c.nn._fit_X.shape == (3, 5)
 
     neigh = vectors_c.get_nearest_neighbours('a/J_b/N')
     assert len(neigh) == 1
     assert neigh[0][0] == 'b/V'
-    assert abs(neigh[0][1] - 0.976246) < 1e-5
+    assert abs(neigh[0][1] - 0.223607) < 1e-5
 
     vectors_c.init_sims(entries_to_include, n_neighbors=2)
     neigh = vectors_c.get_nearest_neighbours('b/V')
     assert len(neigh) == 2
     assert neigh[0][0] == 'a/N'
     assert neigh[1][0] == 'g/N'
-    assert abs(neigh[0][1] - 0.8224338) < 1e-5
-    assert abs(neigh[1][1] - 0.267494) < 1e-5
+    assert abs(neigh[0][1] - 0.387298) < 1e-5
+    assert abs(neigh[1][1] - 1.315295) < 1e-5
 
     # test lexical overlap
     vectors_c.allow_lexical_overlap = False
     vectors_c.init_sims(entries_to_include, n_neighbors=2)
     neigh = vectors_c.get_nearest_neighbours('b/V')
     assert neigh[0][0] == 'a/N'
-    assert abs(neigh[0][1] - 0.8224338) < 1e-5
+    assert abs(neigh[0][1] - 0.387298) < 1e-5
     assert len(neigh) == 2
 
 
@@ -109,6 +109,7 @@ def test_nearest_neighbours_too_few_neighbours(vectors_c):
 
 
 def test_get_nearest_neigh_compare_to_byblo(vectors_c):
+    pytest.skip('Byblo uses cosine sim, and we use L2 for speed (KD Trees rule)')
     thes = 'discoutils/tests/resources/thesaurus_exp0-0c/test.sims.neighbours.strings'
     if not os.path.exists(thes):
         pytest.skip("The required resources for this test are missing. Please add them.")
@@ -146,7 +147,7 @@ def test_similarity_calculation_match(vectors_c):
     """
     for method in ['get_nearest_neighbours_linear', 'get_nearest_neighbours_skipping']:
         for neigh, sim in getattr(vectors_c, method)('b/V'):
-            assert abs(sim - vectors_c.cos_similarity(neigh, 'b/V')) < 1e-5
+            assert abs(sim - vectors_c.euclidean_distance(neigh, 'b/V')) < 1e-5
 
 
 def test_get_vector(vectors_c):
@@ -158,10 +159,10 @@ def test_get_vector(vectors_c):
         assert_array_almost_equal(a, b)
 
 
-def test_cosine_similarity(vectors_c):
-    assert vectors_c.cos_similarity('a/N', 'g/N') > 0
-    assert vectors_c.cos_similarity('a/N', 'a/N') == 1.0
-    assert vectors_c.cos_similarity('afdsf', 'fad') is None
+def test_euclidean_distance(vectors_c):
+    assert vectors_c.euclidean_distance('a/N', 'g/N') > 0
+    assert vectors_c.euclidean_distance('a/N', 'a/N') == 0.0
+    assert vectors_c.euclidean_distance('afdsf', 'fad') is None
 
 
 def test_loading_bigram_thesaurus(thesaurus_c):
