@@ -297,7 +297,8 @@ class Thesaurus(object):
 
 class Vectors(Thesaurus):
     def __init__(self, d, immutable=True, allow_lexical_overlap=True,
-                 matrix=None, columns=None, rows=None, **kwargs):
+                 matrix=None, columns=None, rows=None, noise=None,
+                 **kwargs):
         """
         A Thesaurus extension for storing feature vectors. Provides extra methods, e.g. dissect integration. Each
         entry can be of the form
@@ -330,6 +331,10 @@ class Vectors(Thesaurus):
             self.matrix, self.columns, self.row_names = self.to_sparse_matrix()
         else:
             self.matrix, self.columns, self.row_names = matrix, columns, rows
+        if noise:
+            val = self.matrix.data.mean() * noise
+            print('Adding noise from -{0} to +{0}'.format(val))
+            self.matrix.data += np.random.uniform(-val, val, self.matrix.data.shape)
         self.name2row = {feature: i for (i, feature) in enumerate(self.row_names)}
 
     @classmethod
