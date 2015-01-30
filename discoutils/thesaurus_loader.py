@@ -321,6 +321,9 @@ class Vectors(Thesaurus):
          which currently do not take PoS tags into account, so `net/N` !== `net/J`.
         :param immutable: see Thesaurus docs
         :param matrix: can provide the data as a matrix, to avoid building it ourselves.
+        :param noise: add uniform random noise to all non-zero entries in all vectors. The noise is in (-n, n), where
+        n = noise * mean(non-zero entries). Because noise is only added to non-zero entries, this may only make sense
+        for dense, low-dimensional vectors.
         """
         self._obj = d  # the underlying data dict. Do NOT RENAME!
         self.immutable = immutable
@@ -333,7 +336,7 @@ class Vectors(Thesaurus):
             self.matrix, self.columns, self.row_names = matrix, columns, rows
         if noise:
             val = self.matrix.data.mean() * noise
-            print('Adding noise from -{0} to +{0}'.format(val))
+            logging.info('Adding uniform noise [-{0}, +{0}] to non-zero vector dimensions'.format(val))
             self.matrix.data += np.random.uniform(-val, val, self.matrix.data.shape)
         self.name2row = {feature: i for (i, feature) in enumerate(self.row_names)}
 
@@ -366,7 +369,7 @@ class Vectors(Thesaurus):
         if not th._obj:
             raise ValueError('No entries left over after filtering')
         return Vectors(th._obj, immutable=immutable,
-                       allow_lexical_overlap=allow_lexical_overlap)
+                       allow_lexical_overlap=allow_lexical_overlap, **kwargs)
 
     @classmethod
     def from_pandas_df(cls, df, **kwargs):
