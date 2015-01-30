@@ -40,7 +40,6 @@ class Thesaurus(object):
         self._obj = d  # do not rename
         self.immutable = immutable
 
-
     @classmethod
     def from_shelf_readonly(cls, shelf_file_path):
         return Thesaurus(shelve.open(shelf_file_path, flag='r'))  # read only
@@ -323,8 +322,8 @@ class Vectors(Thesaurus):
          which currently do not take PoS tags into account, so `net/N` !== `net/J`.
         :param immutable: see Thesaurus docs
         :param matrix: can provide the data as a matrix, to avoid building it ourselves.
-        :param noise: add uniform random noise to all non-zero entries in all vectors. The noise is in (-n, n), where
-        n = noise * mean(non-zero entries). Because noise is only added to non-zero entries, this may only make sense
+        :param noise: add uniform random noise to all non-zero entries in all vectors. The noise is in
+        (-noise, noise). Because noise is only added to non-zero entries, this may only make sense
         for dense, low-dimensional vectors.
         """
         self._obj = d  # the underlying data dict. Do NOT RENAME!
@@ -337,9 +336,8 @@ class Vectors(Thesaurus):
         else:
             self.matrix, self.columns, self.row_names = matrix, columns, rows
         if noise:
-            val = self.matrix.data.mean() * noise
-            logging.info('Adding uniform noise [-{0}, +{0}] to non-zero vector dimensions'.format(val))
-            self.matrix.data += np.random.uniform(-val, val, self.matrix.data.shape)
+            logging.info('Adding uniform noise [-{0}, +{0}] to non-zero vector dimensions'.format(noise))
+            self.matrix.data += np.random.uniform(-noise, noise, self.matrix.data.shape)
         self.name2row = {feature: i for (i, feature) in enumerate(self.row_names)}
 
     @classmethod
