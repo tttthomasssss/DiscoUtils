@@ -12,6 +12,7 @@ from scipy.sparse import csr_matrix
 from discoutils.tokens import DocumentFeature
 from discoutils.collections_utils import walk_nonoverlapping_pairs
 from discoutils.io_utils import write_vectors_to_disk
+from discoutils.misc import is_gzipped
 from sklearn.neighbors import NearestNeighbors
 
 try:
@@ -63,7 +64,7 @@ class Thesaurus(object):
                  lowercasing=False, ngram_separator='_', pos_separator='/', allow_lexical_overlap=True,
                  row_filter=lambda x, y: True, column_filter=lambda x: True, max_len=50,
                  max_neighbours=1e8, merge_duplicates=False, immutable=True,
-                 enforce_word_entry_pos_format=True, gzipped=False, **kwargs):
+                 enforce_word_entry_pos_format=True, **kwargs):
         """
         Create a Thesaurus by parsing a Byblo-compatible TSV files (events or sims).
         If duplicate values are encoutered during parsing, only the latest will be kept.
@@ -95,7 +96,6 @@ class Thesaurus(object):
         The former is appropriate for `Thesaurus`, and the latter for `Vectors`
         :param enforce_word_entry_pos_format: if true, entries that are not in a `word/POS` format are skipped. This
         must be true for `allow_lexical_overlap` to work.
-        :param gzipped: whether the file is compressed by running `gzip file.txt`
         """
 
         if not tsv_file:
@@ -104,10 +104,11 @@ class Thesaurus(object):
         DocumentFeature.recompile_pattern(pos_separator=pos_separator, ngram_separator=ngram_separator)
         to_return = dict()
         logging.info('Loading thesaurus %s from disk', tsv_file)
-        gz_file = tsv_file + '.gz'
-        if os.path.exists(gz_file) and gzipped:
+        potential_gz_file = tsv_file + '.gz'
+        if os.path.exists(potential_gz_file) and is_gzipped(potential_gz_file):
             logging.warning('Using .gz version of thesaurus')
-            tsv_file = gz_file
+            tsv_file = potential_gz_file
+
         if not allow_lexical_overlap:
             logging.warning('DISALLOWING LEXICAL OVERLAP')
 
@@ -116,6 +117,7 @@ class Thesaurus(object):
                              'Please enable enforce_word_entry_pos_format')
         FILTERED = '___FILTERED___'.lower()
 
+        gzipped = is_gzipped(tsv_file)
         if gzipped:
             fhandle = gzip.open(tsv_file)
         else:
@@ -347,7 +349,7 @@ class Vectors(Thesaurus):
                  column_filter=lambda x: True,
                  max_len=50, max_neighbours=1e8,
                  merge_duplicates=True,
-                 immutable=True, gzipped=False, **kwargs):
+                 immutable=True, **kwargs):
         """
         Changes the default value of the sim_threshold parameter of super. Features can have any value, including
         negative (especially when working with neural embeddings).
@@ -362,7 +364,7 @@ class Vectors(Thesaurus):
                                 allow_lexical_overlap=True,
                                 row_filter=row_filter, column_filter=column_filter,
                                 max_len=max_len, max_neighbours=max_neighbours,
-                                merge_duplicates=merge_duplicates, gzipped=gzipped,
+                                merge_duplicates=merge_duplicates,
                                 **kwargs)
 
         # get underlying dict from thesaurus
