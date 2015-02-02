@@ -118,6 +118,7 @@ class Thesaurus(object):
 
         gzipped = is_gzipped(tsv_file)
         if gzipped:
+            logging.info('Attempting to read a gzipped file')
             fhandle = gzip.open(tsv_file)
         else:
             fhandle = open(tsv_file)
