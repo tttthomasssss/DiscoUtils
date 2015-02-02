@@ -77,4 +77,8 @@ def mkdirs_if_not_exists(dir):
         os.makedirs(dir)
 
 def is_gzipped(path_to_file):
-    return b'gzip compressed data' in magic.from_file(path_to_file)
+    """
+    Checks if a file is gzipped by looking at its magic number (requires libmagic). Follows symlinks
+    :param path_to_file: may be a symlink
+    """
+    return b'gzip compressed data' in magic.from_file(os.path.realpath(path_to_file))
