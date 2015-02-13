@@ -1,5 +1,3 @@
-import magic
-
 __author__ = 'miroslavbatchkarov'
 
 import os
@@ -78,7 +76,10 @@ def mkdirs_if_not_exists(dir):
 
 def is_gzipped(path_to_file):
     """
-    Checks if a file is gzipped by looking at its magic number (requires libmagic). Follows symlinks
+    Checks if a file is gzipped by looking at its magic number (requires libmagic). Follows symlinks.
+    Requires libmagic and python-magic
     :param path_to_file: may be a symlink
     """
+    import magic
+
     return b'gzip compressed data' in magic.from_file(os.path.realpath(path_to_file))

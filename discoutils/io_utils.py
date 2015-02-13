@@ -2,7 +2,6 @@ import gzip
 from itertools import groupby, chain
 import logging
 from operator import itemgetter
-import numpy as np
 from scipy.sparse import isspmatrix_coo
 import six
 
@@ -30,6 +29,8 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
     :param entry_filter: callable, called for each entry. Takes a single DocumentFeature parameter. Returns true
     if the entry has to be written and false if the entry has to be ignored. Defaults to True.
     """
+    import numpy as np
+
     if not any([vectors_path, features_path, entries_path]):
         raise ValueError('At least one of vectors_path, features_path or entries_path required')
 
