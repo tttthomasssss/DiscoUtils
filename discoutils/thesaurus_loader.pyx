@@ -529,7 +529,8 @@ class Vectors(Thesaurus):
         # if `entry` is contained in the list of neighbours, it will be popped and one less neighbour will be returned
         # so we need to ask for one extra neighbour, but without exceeding the number of available neighbours
         n_neigh = min(self.n_neighbours + (entry in self.search_pool), len(self.search_pool))
-        distances, indices = self.nn.kneighbors(self.get_vector(entry).toarray(),
+        v = self.get_vector(entry)
+        distances, indices = self.nn.kneighbors(v if self.nn.algorithm == 'brute' else v.A,
                                                 n_neighbors=n_neigh)
         neigh = [(self.selected_row2name[indices[0][i]], distances[0][i]) for i in range(indices.shape[1])]
         if not self.allow_lexical_overlap:
