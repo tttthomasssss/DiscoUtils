@@ -106,7 +106,7 @@ def get_NPs(infile, outstream, whitelist=ContainsEverything()):
 
 def read_configuration():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('input', help='Input file')
+    parser.add_argument('input', help='Input file, as produced by FET')
     parser.add_argument('-o', '--output', required=False, type=str, default=None,
                         help='Name of output file. Default <input file>.ANsNNs')
     parser.add_argument('-s', '--whitelist', required=False, type=str, default='',
