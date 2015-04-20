@@ -65,7 +65,7 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
                 s = '%s\t%s\n' % (entry, '\t'.join(map(str, chain.from_iterable(features_and_counts))))
                 outfile.write(s.encode('utf8') if gzipped else s)
                 accepted_entry_counts[entry] = sum(x[1] for x in features_and_counts)
-            if row_num % 5000 == 0 and outfile:
+            if row_num % 20000 == 0 and outfile:
                 logging.info('Processed %d vectors', row_num)
 
     outfile.close()
