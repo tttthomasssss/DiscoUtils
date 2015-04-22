@@ -3,87 +3,84 @@ import re
 import logging
 from discoutils.misc import ContainsEverything
 
+REPORTING_INTERVAL = 100000
+
 noun_pattern = re.compile('^(\S+?/N)')  # a noun entry
 adj_pattern = re.compile('^(\S+?/J)')  # an adjective entry
+verb_pattern = re.compile('^(\S+?/V)')  # a verb entry
 
 # an adjective modifier in an amod relation, consisting of non-whitespace
 an_modifier_feature_pattern = re.compile('amod-DEP:(\S+/J)')
-an_head_feature_pattern = re.compile('amod-HEAD:(\S+/N)')  # an adjective modifier/head in an amod relation
 
 nn_modifier_feature_pattern = re.compile('nn-DEP:(\S+/N)')  # an noun modifier in a nn relation
 nn_head_feature_pattern = re.compile('nn-HEAD:(\S+/N)')  # an noun head in a nn relation
 
-window_feature_pattern = re.compile('(T:\S+)')  # an noun in a nn relation
+grammatical_object_feature_pattern = re.compile("[di]obj-DEP:(\S+/N)")  # a verb and its corresponding object
+grammatical_subject_feature_pattern = re.compile("nsubj-DEP:(\S+/N)")  # a verb and its corresponding nominal subject
+
+window_feature_pattern = re.compile('(T:\S+)')  # an window feature, as output by FET
 
 
-def _find_and_output_features(second, line, first, np_type, outstream, phrase_set):
-    if np_type and second and first:
-        # if we've found en entry having the right PoS and dep features, get its window features
-        features = window_feature_pattern.findall(line)
-        phrase = '{}_{}'.format(first, second)
-        if features and phrase in phrase_set:
-            outstream.write('{}\t{}\n'.format(phrase, '\t'.join(features)))
+def _get_NPs_in_line(line):
+    noun_match = noun_pattern.match(line)
+    if noun_match:
+        head = noun_match.groups()[0]
+        for pattern in [an_modifier_feature_pattern, nn_modifier_feature_pattern]:
+            for modifier in pattern.findall(line):
+                yield head, modifier
 
 
-def get_window_vectors(infile, outstream, whitelist=ContainsEverything()):
+def _get_vp_in_line(line, whitelist):
+    obj = grammatical_object_feature_pattern.findall(line)  # match should work here but it doesnt. wtf?
+    if obj:  # a verb's object is contained in this line
+        verb_match = verb_pattern.match(line)  # find the verb
+        if not verb_match:
+            return
+        verb = verb_match.group(0)
+        if verb not in whitelist:
+            return
+
+        # check if a subject is also present
+        subj = grammatical_subject_feature_pattern.findall(line)
+        if subj:
+            return subj[0], verb, obj[0]
+        else:
+            return verb, obj[0]
+
+
+def get_window_vectors_for_NPs(infile, outstream, whitelist=ContainsEverything()):
     """
     Outputs observed proximity vectors of some NPs. NPs are identified by a regex match, e.g.
     noun entry that has an amod feature, etc. Multiple features of the same entry are not merged.
+
+    Only lines containing features for a noun are considered. That way double counting is avoided, e.g.
+        full-time/J	amod-HEAD:tribunal/N    T:problem
+        tribunal/N	amod-DEP:full-time/J	T:problem
+    The feature T:problem is only output once as a feature of the noun compound
+
     :param infile: FET-formatted feature file
     :param outstream: where to write vectors
     :param whitelist: set of NPs to consider. Default: all that occur in the input file
     """
     with open(infile) as inf:
         for i, line in enumerate(inf):
-            if i % 100000 == 0:
+            if i % REPORTING_INTERVAL == 0:
                 logging.info('Done %d lines', i)
 
-            np_type, second, first = None, None, None
-            # check if the entry is an adj or a noun
-            nouns = noun_pattern.findall(line)
-            adjectives = adj_pattern.findall(line)
-            amod_heads = an_head_feature_pattern.findall(line)
-            amod_modifiers = an_modifier_feature_pattern.findall(line)
-            nn_heads = nn_head_feature_pattern.findall(line)
-            nn_modifiers = nn_modifier_feature_pattern.findall(line)
-
-            if nouns:
-                assert 1 == len(nouns)  # no more than 1 entry per line
-            if adjectives:
-                assert 1 == len(adjectives)  # no more than 1 entry per line
-            if adjectives and amod_modifiers:
-                # logging.warning('Adjective has adjectival modifiers')
-                continue
-
-            if adjectives and amod_heads:
-                first = adjectives[0]
-                second = amod_heads[0]
-                np_type = 'AN'
-                _find_and_output_features(second, line, first, np_type, outstream, whitelist)
-
-            if nouns and amod_modifiers:
-                second = nouns[0]
-                np_type = 'AN'
-                for first in an_modifier_feature_pattern.findall(line):
-                    _find_and_output_features(second, line, first, np_type, outstream, whitelist)
-
-            if nouns and nn_heads:
-                np_type = 'NN'
-                first = nouns[0]
-                second = nn_heads[0]
-                _find_and_output_features(second, line, first, np_type, outstream, whitelist)
-
-            if nouns and nn_modifiers:
-                np_type = 'NN'
-                second = nouns[0]
-                for first in nn_modifier_feature_pattern.findall(line):
-                    _find_and_output_features(second, line, first, np_type, outstream, whitelist)
+            # check if there are any NPs in this line
+            nps = _get_NPs_in_line(line)
+            if nps:
+                features = window_feature_pattern.findall(line)
+                for head, modifier in nps:
+                    phrase = '{}_{}'.format(modifier, head)
+                    if features and phrase in whitelist:
+                        outstream.write('{}\t{}\n'.format(phrase, '\t'.join(features)))
 
 
 def get_NPs(infile, outstream, whitelist=ContainsEverything()):
     """
     Finds all adjective-noun and noun-noun compounds in a FET output file.
-    Optionally accepts only these ANs/NNs whose modifiers are contained in a set
+    Optionally accepts only these ANs/NNs whose modifiers are contained in a set.
     Requires features to have an associated PoS tag, see discoutils/tests/resources/exp10head.pbfiltered
     :param infile: file to read
     :param outstream: where to white newline-separate NPs
@@ -91,17 +88,55 @@ def get_NPs(infile, outstream, whitelist=ContainsEverything()):
     """
     with open(infile) as inf:
         for i, line in enumerate(inf):
-            if i % 100000 == 0:
+            if i % REPORTING_INTERVAL == 0:
+                logging.info('Done %d lines', i)
+            for head, modifier in _get_NPs_in_line(line):
+                if modifier in whitelist:
+                    phrase = '{}_{}'.format(modifier, head)
+                    outstream.write('%s\n' % phrase)
+
+
+def get_VPs(infile, outstream, whitelist=ContainsEverything()):
+    """
+    Finds all verb phrases (verb-object and subject-verb-object compounds) in a FET output file.
+    This only looks at lines that contain a grammatical object, and finds the verb and optional
+    subject of the verb.
+    """
+    # todo Optionally accepts only these VPs whose head are contained in a set
+    with open(infile) as inf:
+        for i, line in enumerate(inf):
+            if i % REPORTING_INTERVAL == 0:
                 logging.info('Done %d lines', i)
 
-            noun_match = noun_pattern.match(line)
-            if noun_match:
-                head = noun_match.groups()[0]
-                for pattern in [an_modifier_feature_pattern, nn_modifier_feature_pattern]:
-                    for modifier in pattern.findall(line):
-                        phrase = '{}_{}'.format(modifier, head)
-                        if modifier in whitelist:
-                            outstream.write('%s\n' % phrase)
+            vp = _get_vp_in_line(line, whitelist)
+            if vp:
+                if len(vp) == 3:
+                    # we found a SVO
+                    phrase = '{}_{}_{}'.format(*vp)
+                elif len(vp) == 2:
+                    # just a verb-object compound
+                    phrase = '{}_{}'.format(*vp)
+                outstream.write('%s\n' % phrase)
+
+
+def get_window_vectors_for_VPs(infile, outstream, whitelist=ContainsEverything()):
+    with open(infile) as inf:
+        for i, line in enumerate(inf):
+            if i % REPORTING_INTERVAL == 0:
+                logging.info('Done %d lines', i)
+
+            # check if there are any VPs in this line
+            vp = _get_vp_in_line(line, whitelist)
+            if vp:
+                features = window_feature_pattern.findall(line)
+                if len(vp) == 3:
+                    # we found a SVO
+                    phrase = '{}_{}_{}'.format(*vp)
+                elif len(vp) == 2:
+                    # just a verb-object compound
+                    phrase = '{}_{}'.format(*vp)
+                if features and phrase in whitelist:
+                    outstream.write('{}\t{}\n'.format(phrase, '\t'.join(features)))
 
 
 def read_configuration():
@@ -128,7 +163,7 @@ if __name__ == '__main__':
 
     if conf.vectors:
         logging.info('Will also output window features for each entry occurrence')
-        function = get_window_vectors
+        function = get_window_vectors_for_NPs
     else:
         logging.info('Will only output NP entries')
         function = get_NPs
