@@ -25,6 +25,7 @@ setup(
     install_requires=['pytest', 'Cython', 'iterpipes3', 'numpy', 'scipy',
                       'scikit-learn', 'six', 'python-magic'],
     ext_modules=cythonize(["discoutils/tokens.pyx",
-                           "discoutils/thesaurus_loader.pyx",])
+                           # "discoutils/thesaurus_loader.pyx",
+                           ])
 )
 

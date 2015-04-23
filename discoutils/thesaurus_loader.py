@@ -382,7 +382,7 @@ class Vectors(Thesaurus):
 
     def to_tsv(self, events_path, entries_path='', features_path='',
                entry_filter=lambda x: True, row_transform=lambda x: x,
-               gzipped=False):
+               gzipped=False, enforce_word_entry_pos_format=True):
         """
         Writes this thesaurus to Byblo-compatible file like the one it was most likely read from. In the
         process converts all entries to a DocumentFeature, so all entries must be parsable into one. May reorder the
@@ -397,7 +397,10 @@ class Vectors(Thesaurus):
          DocumentFeature, e.g. if the data isn't PoS tagged.
         :return: the file name
         """
-        rows = {i: DocumentFeature.from_string(row_transform(feat)) for (feat, i) in self.name2row.items()}
+        if enforce_word_entry_pos_format:
+            rows = {i: DocumentFeature.from_string(row_transform(feat)) for (feat, i) in self.name2row.items()}
+        else:
+            rows = {i: feat for (feat, i) in self.name2row.items()}
         write_vectors_to_disk(self.matrix.tocoo(), rows, self.columns, events_path,
                               features_path=features_path, entries_path=entries_path,
                               entry_filter=entry_filter, gzipped=gzipped)
