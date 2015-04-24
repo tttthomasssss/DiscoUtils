@@ -2,6 +2,7 @@ import argparse
 import logging
 import os
 import sys
+from discoutils.misc import mkdirs_if_not_exists, temp_chdir
 
 if sys.version_info.major == 3:
     import iterpipes3 as iterpipes
@@ -170,6 +171,48 @@ def reindex_all_byblo_vectors(output_prefix):
                        '-o {0}.entries.filtered -Xe {0}.entry-index'.format(output_prefix))
     run_and_log_output('./tools.sh index-events -et JDBM -i {0}.events.filtered.strings '
                        '-o {0}.events.filtered -Xe {0}.entry-index -Xf {0}.feature-index'.format(output_prefix))
+
+
+def build_thesaurus_out_of_vectors(vectors_path, out_dir, threads=4, num_neighbours=100, sim_function='Cosine'):
+    """
+    Builds a Byblo thesaurus out of the provided vectors, however these were constructed. This function will make an
+    uncompressed copy of the provided vectors file- might be slow and use up a lot of extra space.
+
+    :param vectors_path: input vectors in byblo format, compressed or not
+    :param out_dir: where to put the thesaurus and all temp file
+    :param threads: number of byblo threads
+    :param num_neighbours: number of nearest neighbours per entry to output
+    :param sim_function: similarity measure between vectors to use. see byblo docs
+    """
+    from discoutils.thesaurus_loader import Vectors
+
+    BYBLO_BASE_DIR = '/mnt/lustre/scratch/inf/mmb28/FeatureExtractionToolkit/Byblo-2.2.0'
+    vectors_path = os.path.abspath(vectors_path)
+    out_dir = os.path.abspath(out_dir)
+    mkdirs_if_not_exists(out_dir)
+    v = Vectors.from_tsv(vectors_path)
+
+    # prepare the files that byblo expects
+    outf_basename = os.path.join(out_dir, 'input')
+    events_file = os.path.join(out_dir, outf_basename + '.events.filtered.strings')
+    entries_file = os.path.join(out_dir, outf_basename + '.entries.filtered.strings')
+    features_file = os.path.join(out_dir, outf_basename + '.features.filtered.strings')
+    v.to_tsv(events_file, entries_file, features_file, gzipped=False)
+
+    # write the byblo conf file
+    conf = '--input {} --output {} --threads {} --similarity-min 0.01 -k {} ' \
+           '--measure {} --stages allpairs,knn,unenumerate'.format(outf_basename, out_dir, threads,
+                                                                   num_neighbours, sim_function)
+    conf_path = os.path.join(out_dir, 'conf.txt')
+    with open(conf_path, 'w') as outf:
+        for line in conf.split():
+            outf.write(line)
+            outf.write('\n')
+
+    # go baby go
+    with temp_chdir(BYBLO_BASE_DIR):
+        reindex_all_byblo_vectors(outf_basename)
+        run_byblo(conf_path, touch_input_file=True)
 
 
 def get_git_hash():
