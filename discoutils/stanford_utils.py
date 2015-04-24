@@ -1,21 +1,23 @@
 # coding=utf-8
+from glob import glob
+import logging
 from math import ceil
 import os
 import sys
 import subprocess
 import datetime as dt
 import xml.etree.cElementTree as ET
-
-
-################
-#
-# Utilities
-#
-################
 from joblib import Parallel, delayed
 
 
-def current_time(): #for reporting purposes.
+# ###############
+#
+# Utilities
+#
+# ###############
+
+
+def current_time():  #for reporting purposes.
     return dt.datetime.ctime(dt.datetime.now())
 
 
@@ -34,37 +36,6 @@ def _make_filelist_and_create_files(data_dir, filelistpath, output_dir):
                 with open(os.path.join(output_dir, filename + ".tagged"),
                           'w'):
                     pass
-
-
-class Logger(object):
-    """Use for program-wide printing to logfile."""
-
-    def __init__(self):
-        self.log = ""
-
-    def flush(self):
-        sys.stdout.flush()
-        if self.log:
-            self.log.flush()
-
-    def set_log(self, path):
-        if path:
-            self.log = open(path, 'a')
-
-    def print_info(self, info, flush=True, printstdin=True):
-        if self.log:
-            self.log.write(info + "\n")
-        if printstdin:
-            print(info)
-        if flush:
-            self.flush()
-
-##########
-#
-# Create a logger
-#
-##########
-logger = Logger()
 
 
 #####################
@@ -92,12 +63,12 @@ def run_stanford_pipeline(data_dir, stanford_dir, java_threads=2,
     try:
         os.mkdir(output_dir)
     except OSError:
-        pass #Directory already exists
+        pass  #Directory already exists
 
     #Change working directory to stanford tools
     os.chdir(stanford_dir)
 
-    logger.print_info("<%s> Beginning stanford pipeline..." % current_time())
+    logging.info("<%s> Beginning stanford pipeline..." % current_time())
 
     for data_sub_dir in [name for name in os.listdir(data_dir) if
                          not name.startswith(".")]:
@@ -107,14 +78,14 @@ def run_stanford_pipeline(data_dir, stanford_dir, java_threads=2,
         try:
             os.mkdir(output_sub_dir)
         except OSError:
-            pass #Directory already exists
+            pass  #Directory already exists
 
         #Create list of files to be processed.
         filelist = os.path.join(filelistdir if filelistdir else stanford_dir,
                                 "%s-filelist.txt" % data_sub_dir)
         _make_filelist_and_create_files(input_sub_dir, filelist, output_sub_dir)
 
-        logger.print_info("<%s> Beginning stanford processing: %s" % (
+        logging.info("<%s> Beginning stanford processing: %s" % (
             current_time(), input_sub_dir))
 
         #Construct stanford java command.
@@ -126,17 +97,18 @@ def run_stanford_pipeline(data_dir, stanford_dir, java_threads=2,
                         '-threads', str(java_threads), '-outputFormat', 'xml',
                         '-outputExtension', '.tagged', '-parse.maxlen', '50']
 
-        logger.print_info("Running: \n" + str(stanford_cmd))
+        logging.info("Running: \n" + str(stanford_cmd))
 
         #Run stanford script, block until complete.
         subprocess.call(stanford_cmd)
 
-        logger.print_info("<%s> Stanford complete for path: %s" % (
+        logging.info("<%s> Stanford complete for path: %s" % (
             current_time(), output_sub_dir))
 
-    logger.print_info("<%s> All stanford complete." % current_time())
+    logging.info("<%s> All stanford complete." % current_time())
 
     return output_dir
+
 
 ##################
 #
@@ -151,7 +123,7 @@ def process_corpora_from_xml(path_to_corpora, processes=1):
         ID    FORM    LEMMA    POS
     Jobs are run in parallel.
     """
-    logger.print_info("<%s> Starting XML conversion..." % current_time())
+    logging.info("<%s> Starting XML conversion..." % current_time())
     for data_sub_dir in os.listdir(path_to_corpora):
         _process_xml_to_conll(os.path.join(path_to_corpora, data_sub_dir),
                               processes)
@@ -162,7 +134,7 @@ def _process_xml_to_conll(path_to_data, processes=1):
     Given a directory of XML documents from stanford's output,
     convert them to CoNLL style sentences. Jobs run in parallel.
     """
-    logger.print_info("<%s> Beginning formatting to CoNLL: %s" % (
+    logging.info("<%s> Beginning formatting to CoNLL: %s" % (
         current_time(), path_to_data))
     # jobs = {}
     Parallel(n_jobs=processes)(delayed(_process_single_xml_to_conll)(
@@ -171,7 +143,7 @@ def _process_xml_to_conll(path_to_data, processes=1):
                                if not (data_file.startswith(".") or
                                        data_file.endswith(".conll")))
 
-    logger.print_info("<%s> All formatting complete." % current_time())
+    logging.info("<%s> All formatting complete." % current_time())
 
 
 def _process_single_xml_to_conll(path_to_file):
@@ -182,7 +154,7 @@ def _process_single_xml_to_conll(path_to_file):
         #Create iterator over XML elements, don't store whole tree
         xmltree = ET.iterparse(path_to_file, events=("end",))
         for _, element in xmltree:
-            if element.tag == "sentence": #If we've read an entire sentence
+            if element.tag == "sentence":  #If we've read an entire sentence
                 i = 1
                 #Output CoNLL style
                 for word, lemma, pos, ner in zip(element.findall(".//word"),
@@ -196,6 +168,7 @@ def _process_single_xml_to_conll(path_to_file):
                 outfile.write("\n")
                 #Clear this section of the XML tree
                 element.clear()
+
 
 ####################
 #
@@ -219,9 +192,9 @@ def dependency_parse_directory(data_dir, parser_project_path, liblinear_path,
     try:
         os.mkdir(output_dir)
     except OSError:
-        pass #Directory already exists
+        pass  #Directory already exists
 
-    logger.print_info("<%s> Beginning dependency parsing..." % current_time())
+    logging.info("<%s> Beginning dependency parsing..." % current_time())
 
     for data_sub_dir in [path for path in os.listdir(data_dir) if
                          not path.startswith('.')]:
@@ -231,9 +204,9 @@ def dependency_parse_directory(data_dir, parser_project_path, liblinear_path,
         try:
             os.mkdir(output_sub_dir)
         except OSError:
-            pass #directory already exists
+            pass  #directory already exists
 
-        logger.print_info("<%s> Parsing: %s" % (current_time(), input_sub_dir))
+        logging.info("<%s> Parsing: %s" % (current_time(), input_sub_dir))
 
         #Create a number (processes) of individual processes for executing parsers.
         files_chunks = chunks([name for name in os.listdir(input_sub_dir) if
@@ -251,7 +224,7 @@ def dependency_parse_directory(data_dir, parser_project_path, liblinear_path,
                                                        parser_project_path)
                                    for f in files_chunks)
 
-        logger.print_info("<%s> Parsing Complete." % current_time())
+        logging.info("<%s> Parsing Complete." % current_time())
 
 
 def run_parser(input_dir, input_files, output_dir, parser_project_path):
@@ -262,7 +235,7 @@ def run_parser(input_dir, input_files, output_dir, parser_project_path):
     input_filepaths = [os.path.join(input_dir, name) for name in input_files]
     output_filepaths = [os.path.join(output_dir, name + ".parsed") for name in
                         input_files]
-    dp = DependencyParser() #Shit just got real
+    dp = DependencyParser()  #Shit just got real
     dp.parse_file_list(input_filepaths,
                        output_filepaths,
                        os.path.join(parser_project_path, "examples",
@@ -276,6 +249,7 @@ def run_parser(input_dir, input_files, output_dir, parser_project_path):
         len(input_files), dt.datetime.now() - start)
     return input_files, info
 
+
 #############
 #
 # Cleaning up
@@ -283,7 +257,7 @@ def run_parser(input_dir, input_files, output_dir, parser_project_path):
 ############
 def remove_temp_files(path_to_corpora):
     """Remove XML versions of processed data"""
-    logger.print_info("<%s> Removing XML files..." % current_time())
+    logging.info("<%s> Removing XML files..." % current_time())
     for data_sub_dir in os.listdir(path_to_corpora):
         dir_path = os.path.join(path_to_corpora, data_sub_dir)
         if not data_sub_dir.startswith(".") and os.path.isdir(dir_path):
@@ -291,26 +265,24 @@ def remove_temp_files(path_to_corpora):
                 if not filename.startswith(".") and not filename.endswith(
                         "conll"):
                     os.remove(os.path.join(dir_path, filename))
-    logger.print_info("<%s> XML files removed." % current_time())
+    logging.info("<%s> XML files removed." % current_time())
+
 
 ###################
 #
 # Methods of invocation
 #
 ##################
-def execute_pipeline(path_to_corpora, # Required for all
-                     path_to_stanford="", # Required for stanford pipeline
-                     path_to_filelistdir="", # optional
-                     path_to_depparser="", # Required for dependency parsing
-                     log="", # optional
-                     path_to_liblinear="", # Required if liblinear not in path
+def execute_pipeline(path_to_corpora,  # Required for all
+                     path_to_stanford="",  # Required for stanford pipeline
+                     path_to_filelistdir="",  # optional
+                     path_to_depparser="",  # Required for dependency parsing
+                     path_to_liblinear="",  # Required if liblinear not in path
                      run=frozenset(["stanford", "formatting", "parsing"]),
                      stanford_java_threads=40,
                      formatting_python_processes=40,
                      parsing_python_processes=40
 ):
-    logger.set_log(log)
-
     if "stanford" in run:
         if not path_to_stanford:
             raise ValueError("Specify path to stanford")
@@ -332,7 +304,7 @@ def execute_pipeline(path_to_corpora, # Required for all
     if "cleanup" in run:
         remove_temp_files(tagged_path)
 
-    logger.print_info("Pipeline finished")
+    logging.info("Pipeline finished")
 
 
 if __name__ == "__main__":
@@ -483,7 +455,8 @@ if __name__ == "__main__":
     run = set("stanford".split())
 
     #Fill arguments below, for example:
-    from glob import glob
+    logging.basicConfig(level=logging.INFO,
+                        format="%(asctime)s\t%(module)s.%(funcName)s (line %(lineno)d)\t%(levelname)s : %(message)s")
 
     for dataset in glob('/Volumes/LocalDataHD/mmb28/Downloads/techtc100-clean/Exp*'):
         execute_pipeline(
