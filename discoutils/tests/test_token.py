@@ -68,7 +68,11 @@ def test_document_feature_from_string():
     for invalid_string in ['a\/s/N', 'l\/h/N_clinton\/south/N', 'l\/h//N_clinton\/south/N',
                            'l//fasdlj/fasd/dfs/sdf', 'l//fasdlj/fasd/dfs\_/sdf', 'dfs\_/sdf',
                            'dfs\_/fadslk_/sdf', '/_dfs\_/sdf', '_/_/', '_///f_/', 'drop_bomb',
-                           'drop/V_bomb', '/V_/N', 'cat', 'word1_word2//']:
+                           'drop/V_bomb', '/V_/N', 'cat', 'word1_word2//', 'mk8/N_6hp/N',
+                           'a./N_gordon/N', 'great/J_c.d./N', 'info@tourmate.com/N', 'w1/N',
+                           '-lrb-306-rrb- 569-1995/N', 'mumaharps.com/N', 'c+l+a+v+i+e+r+/N',
+                           'b/N_o\o/N']:
+        print(invalid_string)
         assert DocumentFeature('EMPTY', tuple()) == DocumentFeature.from_string(invalid_string)
 
 
