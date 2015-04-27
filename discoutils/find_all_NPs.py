@@ -30,16 +30,13 @@ def _get_NPs_in_line(line):
                 yield head, modifier
 
 
-def _get_vp_in_line(line, whitelist):
+def _get_vp_in_line(line):
     obj = grammatical_object_feature_pattern.findall(line)  # match should work here but it doesnt. wtf?
     if obj:  # a verb's object is contained in this line
         verb_match = verb_pattern.match(line)  # find the verb
         if not verb_match:
             return
         verb = verb_match.group(0)
-        if verb not in whitelist:
-            return
-
         # check if a subject is also present
         subj = grammatical_subject_feature_pattern.findall(line)
         if subj:
@@ -101,15 +98,18 @@ def get_VPs(infile, outstream, whitelist=ContainsEverything()):
     Finds all verb phrases (verb-object and subject-verb-object compounds) in a FET output file.
     This only looks at lines that contain a grammatical object, and finds the verb and optional
     subject of the verb.
+    :param whitelist: set of verbs. VPs whose head is not in that set are not output
     """
-    # todo Optionally accepts only these VPs whose head are contained in a set
     with open(infile) as inf:
         for i, line in enumerate(inf):
             if i % REPORTING_INTERVAL == 0:
                 logging.info('Done %d lines', i)
 
-            vp = _get_vp_in_line(line, whitelist)
+            vp = _get_vp_in_line(line)
             if vp:
+                if vp[-2] in whitelist:
+                    # ignore verbs that are not in the whitelist
+                    continue
                 if len(vp) == 3:
                     # we found a SVO
                     phrase = '{}_{}_{}'.format(*vp)
@@ -120,13 +120,16 @@ def get_VPs(infile, outstream, whitelist=ContainsEverything()):
 
 
 def get_window_vectors_for_VPs(infile, outstream, whitelist=ContainsEverything()):
+    """
+    :param whitelist: set of VPs. Only VPs in that set are output
+    """
     with open(infile) as inf:
         for i, line in enumerate(inf):
             if i % REPORTING_INTERVAL == 0:
                 logging.info('Done %d lines', i)
 
             # check if there are any VPs in this line
-            vp = _get_vp_in_line(line, whitelist)
+            vp = _get_vp_in_line(line)
             if vp:
                 features = window_feature_pattern.findall(line)
                 if len(vp) == 3:
@@ -144,7 +147,7 @@ def read_configuration():
     parser.add_argument('input', help='Input file, as produced by FET')
     parser.add_argument('-o', '--output', required=False, type=str, default=None,
                         help='Name of output file. Default <input file>.ANsNNs')
-    parser.add_argument('-s', '--whitelist', required=False, type=str, default='',
+    parser.add_argument('-s', '--whitelist', required=False, nargs='+',
                         help='Name of file containing a set of phrases/modifiers that will be considered. '
                              'All other NPs are disregarded. When vectors is true, these need to be phrases, '
                              'otherwise they need to be modifiers.')
@@ -154,6 +157,29 @@ def read_configuration():
     return parser.parse_args()
 
 
+def get_function_to_run(conf, use_VPs=False):
+    if use_VPs:
+        logging.info('Will only output a list of VPs')
+    else:
+        logging.info('Will only output a list of NPs')
+
+    if conf.vectors:
+        logging.info('Will also output window features for each entry occurrence')
+        function = get_window_vectors_for_VPs if use_VPs else get_window_vectors_for_NPs
+    else:
+        function = get_VPs if use_VPs else get_NPs
+
+    whitelist_files = conf.whitelist
+    if whitelist_files:
+        whitelist = set()
+        for wfile in whitelist_files:
+            with open(wfile) as f:
+                whitelist |= set(x.strip() for x in f.readlines())
+    else:
+        whitelist = ContainsEverything()
+
+    return function, whitelist
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s\t%(module)s.%(funcName)s """
@@ -161,22 +187,16 @@ if __name__ == '__main__':
     conf = read_configuration()
     output = conf.output if conf.output else '%s.ANsNNs' % conf.input
 
-    if conf.vectors:
-        logging.info('Will also output window features for each entry occurrence')
-        function = get_window_vectors_for_NPs
-    else:
-        logging.info('Will only output NP entries')
-        function = get_NPs
-    whitelist = conf.whitelist
-
-    if whitelist:
-        with open(whitelist) as f:
-            whitelist = set(x.strip() for x in f.readlines())
-    else:
-        whitelist = ContainsEverything()
-
+    # do the noun phrases first
+    function, whitelist = get_function_to_run(conf)
     with open(output, 'w') as outstream:
         logging.info('Reading from %s', conf.input)
         logging.info('Writing to %s', output)
+        function(conf.input, outstream, whitelist=whitelist)
 
+    # and then the verb phrases
+    function, whitelist = get_function_to_run(conf, use_VPs=True)
+    with open(output, 'a') as outstream:
+        logging.info('Reading from %s', conf.input)
+        logging.info('Writing to %s', output)
         function(conf.input, outstream, whitelist=whitelist)
