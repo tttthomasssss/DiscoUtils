@@ -103,7 +103,7 @@ def run_and_log_output(cmd_string, *args, **kwargs):
     Runs a command with iterpipes and logs the output
     """
     c = iterpipes.cmd(cmd_string, bufsize=128, *args, **kwargs)
-    logging.info('Running %s', c)
+    logging.info('Running %s', iterpipes.format(cmd_string, args))
     out = iterpipes.run(c)
     for line in out:
         logging.info(line)
