@@ -1,6 +1,7 @@
 import argparse
 import re
 import logging
+from sklearn.feature_extraction.stop_words import ENGLISH_STOP_WORDS
 from discoutils.misc import ContainsEverything
 
 REPORTING_INTERVAL = 100000
@@ -19,6 +20,23 @@ grammatical_object_feature_pattern = re.compile("[di]obj-DEP:(\S+/N)")  # a verb
 grammatical_subject_feature_pattern = re.compile("nsubj-DEP:(\S+/N)")  # a verb and its corresponding nominal subject
 
 window_feature_pattern = re.compile('(T:\S+)')  # an window feature, as output by FET
+
+STOPWORDS = {'T:{}/'.format(x) for x in ENGLISH_STOP_WORDS}
+
+
+def filter_features(features, *blacklist):
+    """
+    Removes stopword window features as well as ones mentioned in a list. Can be used to remove
+    itself from features of phrases, e.g. black/J_cat/N might have T:black/J as a feature, which we
+    do not want
+    :param blacklist:
+    :return:
+    """
+    # first remove the stopwords
+    res = [f for f in features if not any(f.startswith(stopw) for stopw in STOPWORDS)]
+    # now remove words in the blacklist
+    blacklist = {'T:{}'.format(b) for b in blacklist}
+    return [f for f in res if f not in blacklist]
 
 
 def _get_NPs_in_line(line):
@@ -69,9 +87,10 @@ def get_window_vectors_for_NPs(infile, outstream, whitelist=ContainsEverything()
             if nps:
                 features = window_feature_pattern.findall(line)
                 for head, modifier in nps:
+                    filtered_feats = filter_features(features, head, modifier)
                     phrase = '{}_{}'.format(modifier, head)
-                    if features and phrase in whitelist:
-                        outstream.write('{}\t{}\n'.format(phrase, '\t'.join(features)))
+                    if filtered_feats and phrase in whitelist:
+                        outstream.write('{}\t{}\n'.format(phrase, '\t'.join(filtered_feats)))
 
 
 def get_NPs(infile, outstream, whitelist=ContainsEverything()):
@@ -107,7 +126,7 @@ def get_VPs(infile, outstream, whitelist=ContainsEverything()):
 
             vp = _get_vp_in_line(line)
             if vp:
-                if vp[-2] in whitelist:
+                if vp[-2] not in whitelist:
                     # ignore verbs that are not in the whitelist
                     continue
                 if len(vp) == 3:
@@ -131,7 +150,7 @@ def get_window_vectors_for_VPs(infile, outstream, whitelist=ContainsEverything()
             # check if there are any VPs in this line
             vp = _get_vp_in_line(line)
             if vp:
-                features = window_feature_pattern.findall(line)
+                features = filter_features(window_feature_pattern.findall(line), *vp)
                 if len(vp) == 3:
                     # we found a SVO
                     phrase = '{}_{}_{}'.format(*vp)
@@ -179,6 +198,7 @@ def get_function_to_run(conf, use_VPs=False):
         whitelist = ContainsEverything()
 
     return function, whitelist
+
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO,

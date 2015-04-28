@@ -1,4 +1,4 @@
-launch/V        T:ordinary/J    T:council/N     T:session/N       dobj-DEP:attack/N
+launch/V        T:ordinary/J    T:council/N     T:session/N       dobj-DEP:attack/N	T:attack/N
 attack/N        T:ordinary/J    T:council/N     T:session/N        dobj-HEAD:launch/V
 keep/V  complm-DEP:that/CONJ    T:preserve/V    T:include/V       T:building/N    T:site/N  dobj-DEP:site/N conj-HEAD:want/V
 site/N  T:include/V     T:keep/V    T:building/N    nn-DEP:building/N       dobj-HEAD:keep/V
