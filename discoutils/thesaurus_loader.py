@@ -143,7 +143,7 @@ class Thesaurus(object):
 
                     if enforce_word_entry_pos_format and dfkey.type == 'EMPTY':
                         # do not load things in the wrong format, they'll get in the way later
-                        logging.warning('%s is not in the word/POS format, skipping', tokens[0])
+                        # logging.warning('%s is not in the word/POS format, skipping', tokens[0])
                         continue
 
                     if (not row_filter(key, dfkey)) or len(key) > max_len:

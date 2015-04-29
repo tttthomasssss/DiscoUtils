@@ -69,7 +69,7 @@ class DocumentFeature(object):
                                   ('EMPTY', '1-GRAM', '2-GRAM', '3-GRAM')[len(tokens)])
             return DocumentFeature(type, tuple(tokens))
         except Exception as e:
-            logging.error('Cannot create token out of string %s', string)
+            # logging.error('Cannot create token out of string %s', string)
             return DocumentFeature('EMPTY', tuple())
 
     def tokens_as_str(self):
