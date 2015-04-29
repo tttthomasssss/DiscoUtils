@@ -21,7 +21,10 @@ grammatical_subject_feature_pattern = re.compile("nsubj-DEP:(\S+/N)")  # a verb 
 
 window_feature_pattern = re.compile('(T:\S+)')  # an window feature, as output by FET
 
-STOPWORDS = {'T:{}/'.format(x) for x in ENGLISH_STOP_WORDS}
+STOPWORDS = {'T:{}/'.format(x) for x in ENGLISH_STOP_WORDS +
+             ['\' \" ` `` . , ; ! ? \'\' '] +  # punctuation
+             list(str(num) for num in range(10))}  # numbers
+ACCEPTABLE_FEATURE_POS_TAGS = set('/J /N /V /DET /RB /CONJ /PRON'.split())
 
 
 def filter_features(features, *blacklist):
@@ -33,7 +36,9 @@ def filter_features(features, *blacklist):
     :return:
     """
     # first remove the stopwords
-    res = [f for f in features if not any(f.startswith(stopw) for stopw in STOPWORDS)]
+    res = [f for f in features if
+           (any(features.endswith(pos) for pos in ACCEPTABLE_FEATURE_POS_TAGS)) and \
+           (not any(f.startswith(stopw) for stopw in STOPWORDS))]
     # now remove words in the blacklist
     blacklist = {'T:{}'.format(b) for b in blacklist}
     return [f for f in res if f not in blacklist]

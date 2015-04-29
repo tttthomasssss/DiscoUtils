@@ -6,5 +6,5 @@ express/V       nsubj-DEP:strabag/N     T:builder/N     T:strabag/N     dobj-DEP
 interest/N      T:the/DET       T:road/N    dobj-HEAD:express/V
 activist/N      amod-DEP:troubled/J     amod-DEP:leftw/V        T:accord/V      T:source/N      det-DEP:the/DET nsubj-HEAD:tell/V
 tell/V  nsubj-DEP:activist/N    T:life/N    T:source/N       dobj-DEP:police/N       dep-HEAD:want/V prep-DEP:accord/V
-police/N        T:,/PUNCT       T:''/UNK        T:the/DET       T:troubled/J    dobj-HEAD:tell/V
-declare/V       nsubj-DEP:karzai/N      iobj-DEP:thursday/N     T:declare/V T:mourning/N    T:state/N       iobj-HEAD:declare/V
+police/N        T:,/PUNCT       T:''/UNK        T:the/DET       T:troubled/J    dobj-HEAD:tell/V	T:5/UNK
+declare/V       nsubj-DEP:karzai/N      iobj-DEP:thursday/N     T:declare/V T:mourning/N    T:state/N       iobj-HEAD:declare/V	T:''/UNK	T:``/UNK
