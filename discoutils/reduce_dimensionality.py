@@ -11,7 +11,7 @@ from operator import itemgetter
 from sklearn.decomposition import TruncatedSVD
 from discoutils.tokens import DocumentFeature
 from discoutils.thesaurus_loader import Vectors
-from discoutils.io_utils import write_vectors_to_disk
+from discoutils.io_utils import write_vectors_to_hdf
 
 try:
     import cPickle as pickle
@@ -89,10 +89,9 @@ def _write_to_disk(reduced_mat, method, prefix, rows):
     features_file = prefix + '.features.filtered.strings'
     events_file = prefix + '.events.filtered.strings'
     entries_file = prefix + '.entries.filtered.strings'
-    model_file = prefix + '.model.pkl'
-    write_vectors_to_disk(reduced_mat, rows,
+    write_vectors_to_hdf(reduced_mat, rows,
                           ['SVD:feat{0:05d}'.format(i) for i in range(reduced_mat.shape[1])],
-                          events_file, features_file, entries_file, gzipped=True)
+                          events_file)
 
     # disabled because it causes a crash with large objects
     # see http://bugs.python.org/issue11564
