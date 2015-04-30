@@ -2,7 +2,7 @@ import gzip
 from itertools import groupby, chain
 import logging
 from operator import itemgetter
-from scipy.sparse import isspmatrix_coo
+from scipy.sparse import isspmatrix_coo, issparse
 import six
 
 __author__ = 'mmb28'
@@ -85,6 +85,16 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
                     logging.warning('Feature %s does not occur in vector set', feature)
                 else:
                     outfile.write('%s\t%f\n' % (feature, count))
+
+
+def write_vectors_to_hdf(matrix, row_index:list, column_index:list, events_path):
+    import pandas as pd
+
+    logging.info('Writing vectors of shape %r to %s', matrix.shape, events_path)
+    df = pd.DataFrame(matrix.A if issparse(matrix) else matrix,
+                      index=row_index, columns=column_index)
+    from collections import Counter
+    df.to_hdf(events_path, 'matrix', complevel=9, complib='zlib')
 
 
 def reformat_entries(filename, suffix, function, separator='\t'):

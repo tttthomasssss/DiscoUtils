@@ -11,7 +11,7 @@ from scipy.spatial.distance import euclidean
 from scipy.sparse import csr_matrix
 from discoutils.tokens import DocumentFeature
 from discoutils.collections_utils import walk_nonoverlapping_pairs
-from discoutils.io_utils import write_vectors_to_disk
+from discoutils.io_utils import write_vectors_to_disk, write_vectors_to_hdf
 from discoutils.misc import is_gzipped, is_hdf
 from sklearn.neighbors import NearestNeighbors
 
@@ -147,7 +147,7 @@ class Thesaurus(object):
                         continue
 
                     if (not row_filter(key, dfkey)) or len(key) > max_len:
-                        logging.warning('Skipping entry for %s', key)
+                        logging.debug('Skipping entry for %s', key)
                         continue
 
                     to_insert = [(DocumentFeature.smart_lower(word, lowercasing), float(sim))
@@ -168,7 +168,7 @@ class Thesaurus(object):
                     if len(to_insert) > 0:
                         if key in to_return:  # this is a duplicate entry, merge it or raise an error
                             if merge_duplicates:
-                                logging.warning('Multiple entries for "%s" found. Merging.', tokens[0])
+                                logging.debug('Multiple entries for "%s" found. Merging.', tokens[0])
                                 c = Counter(dict(to_return[key]))
                                 c.update(dict(to_insert))
                                 to_return[key] = [(k, v) for k, v in c.items()]
@@ -236,7 +236,10 @@ class Thesaurus(object):
         return mat, self.v.feature_names_, rows
 
     def __getattr__(self, name):
-        return getattr(self._obj, name)
+        if hasattr(self._obj, name):
+            return getattr(self._obj, name)
+        else:
+            raise ValueError('%r (and wrapped dict) doesnt have an attribute %s' % (self, name))
 
     def __setstate__(self, d):
         """
@@ -291,10 +294,7 @@ class Thesaurus(object):
         return item in self._obj
 
     def __len__(self):
-        if not hasattr(self, 'cached_len'):
-            # if self._obj is a shelve object, calling its __len__ takes forever
-            self.cached_len = len(self._obj)
-        return self.cached_len
+        return len(self._obj)
 
 
 class Vectors(Thesaurus):
@@ -364,11 +364,15 @@ class Vectors(Thesaurus):
         if is_hdf(tsv_file):
             import pandas as pd
 
-            with pd.get_store(tsv_file) as store:
-                df = store['matrix']
-                return Vectors.from_pandas_df(df, immutable=immutable,
-                                              allow_lexical_overlap=allow_lexical_overlap,
-                                              **kwargs)
+            df = pd.read_hdf(tsv_file, 'matrix')
+            logging.info('Found a DF of shape %r in HDF file', df.shape)
+            # pytables doesn't like unicode values and replaces them with an emptry string.
+            # remove these, we don't want to work with them anywa
+            df = df[df.index != '']
+            logging.info('Dropped non-ascii rows, shape is now %r', df.shape)
+            return Vectors.from_pandas_df(df, immutable=immutable,
+                                          allow_lexical_overlap=allow_lexical_overlap,
+                                          **kwargs)
 
         th = Thesaurus.from_tsv(tsv_file, sim_threshold=sim_threshold,
                                 ngram_separator=ngram_separator,
@@ -387,6 +391,7 @@ class Vectors(Thesaurus):
     @classmethod
     def from_pandas_df(cls, df, **kwargs):
         d = df.T.to_dict()
+        assert len(d) == len(df)
         for entry in d.keys():
             d[entry] = sorted(d[entry].items())
         return Vectors(d, matrix=csr_matrix(df.values), rows=df.index,
@@ -419,18 +424,11 @@ class Vectors(Thesaurus):
             rows = {i: feat for (feat, i) in self.name2row.items()}
 
         if dense_hd5 and len(self.columns) <= 1000:
-            import pandas as pd
-
-            print(self.matrix.shape)
-            df = pd.DataFrame(self.matrix.A, index=self.row_names, columns=self.columns)
-            events_path += '.h5'
-            with pd.get_store(events_path, mode='w',
-                              complevel=9, complib='zlib') as store:
-                store['matrix'] = df
+            write_vectors_to_hdf(self.matrix, self.row_names, self.columns, events_path)
         else:
             write_vectors_to_disk(self.matrix.tocoo(), rows, self.columns, events_path,
-                                  features_path=features_path, entries_path=entries_path,
-                                  entry_filter=entry_filter, gzipped=gzipped)
+                features_path=features_path, entries_path=entries_path,
+                entry_filter=entry_filter, gzipped=gzipped)
         return events_path
 
     def to_dissect_core_space(self):
@@ -456,9 +454,9 @@ class Vectors(Thesaurus):
 
     def to_dissect_sparse_files(self, output_prefix, row_transform=None):
         """
-        Converting to a dissect sparse matrix format. Writes out 3 files, columns, rows and matrix
+        Converting to a dissect sparse matrix format. Writes out 3 files: columns, rows and matrix
 
-        :param output_prefix: str, a
+        :param output_prefix: str
         :param row_transform:
         """
         with open('{0}.rows'.format(output_prefix), 'w') as outfile:
@@ -614,7 +612,7 @@ class Vectors(Thesaurus):
         # if set(self.row_names) != set(other.row_names):
         # from collections import Counter
         #
-        #         print('rows do not match')
+        # print('rows do not match')
         #         print(Counter(type(x) for x in self.row_names))
         #         print(Counter(type(x) for x in other.row_names))
         #         print(set(self.row_names) - set(other.row_names))
