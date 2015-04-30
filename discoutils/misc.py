@@ -62,6 +62,7 @@ def temp_chdir(path):
     finally:
         os.chdir(starting_directory)
 
+
 def mkdirs_if_not_exists(dir):
     """
     Creates a directory (and all intermediate directories) if it doesn't exists.
@@ -74,12 +75,25 @@ def mkdirs_if_not_exists(dir):
     if not (os.path.exists(dir) and os.path.isdir(dir)):
         os.makedirs(dir)
 
+
+def _check_file_magic(file, magic_substr):
+    import magic
+
+    return magic_substr in magic.from_file(os.path.realpath(file))
+
+
 def is_gzipped(path_to_file):
     """
     Checks if a file is gzipped by looking at its magic number (requires libmagic). Follows symlinks.
     Requires libmagic and python-magic
     :param path_to_file: may be a symlink
     """
-    import magic
 
-    return b'gzip compressed data' in magic.from_file(os.path.realpath(path_to_file))
+    return _check_file_magic(path_to_file, b'gzip compressed data')
+
+
+def is_hdf(path_to_file):
+    """
+    Checks if a file is a HDF store
+    """
+    return _check_file_magic(path_to_file, b'Hierarchical Data Format')

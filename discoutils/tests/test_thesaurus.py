@@ -411,12 +411,23 @@ def test_max_num_neighbours_and_no_lexical_overlap():
     assert len(t['trade/N_law/N']) == 1
 
 
-def test_loading_from_tar():
+def test_loading_from_gz():
     t1 = Thesaurus.from_tsv('discoutils/tests/resources/exp0-0a.strings')
-    t2 = Thesaurus.from_tsv('discoutils/tests/resources/exp0-0a.strings.gz')
+    t2 = Thesaurus.from_tsv('discoutils/tests/resources/exp0-0a.strings.gzip')
     for k, v in t1.items():
         assert k in t2
         assert v == t2[k]
+
+def test_loading_from_h5():
+    t1 = Vectors.from_tsv('discoutils/tests/resources/exp0-0a.strings')
+    t2 = Vectors.from_tsv('discoutils/tests/resources/exp0-0a.strings.h5')
+    for k, v in t1.items():
+        assert k in t2
+        # t2[k] may return the features in any order, sort them
+        # this test file contain a Thesaurus, not Vectors, so zeroes will be added to some "features"
+        # remove such features
+        actual_features = [(feat, freq) for feat, freq in t2[k] if freq > 0]
+        assert sorted(v) == sorted(actual_features)
 
 
 def test_from_pandas_data_frame(vectors_c):

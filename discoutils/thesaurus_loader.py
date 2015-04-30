@@ -12,7 +12,7 @@ from scipy.sparse import csr_matrix
 from discoutils.tokens import DocumentFeature
 from discoutils.collections_utils import walk_nonoverlapping_pairs
 from discoutils.io_utils import write_vectors_to_disk
-from discoutils.misc import is_gzipped
+from discoutils.misc import is_gzipped, is_hdf
 from sklearn.neighbors import NearestNeighbors
 
 try:
@@ -336,6 +336,9 @@ class Vectors(Thesaurus):
             self.matrix, self.columns, self.row_names = self.to_sparse_matrix()
         else:
             self.matrix, self.columns, self.row_names = matrix, columns, rows
+        if self.matrix.shape != (len(self.row_names), len(self.columns)):
+            logging.error('Vectors matrix has shape %r, but indices are of size %r, %r',
+                          self.matrix.shape, len(self.row_names), len(self.columns))
         if noise:
             logging.info('Adding uniform noise [-{0}, +{0}] to non-zero vector dimensions'.format(noise))
             self.matrix.data += np.random.uniform(-noise, noise, self.matrix.data.shape)
@@ -358,6 +361,15 @@ class Vectors(Thesaurus):
         # implemented in get_nearest_neighbours. A Thesaurus can afford to do the filtering when reading the
         # ready-made thesaurus from disk.
         allow_lexical_overlap = kwargs.pop('allow_lexical_overlap', True)
+        if is_hdf(tsv_file):
+            import pandas as pd
+
+            with pd.get_store(tsv_file) as store:
+                df = store['matrix']
+                return Vectors.from_pandas_df(df, immutable=immutable,
+                                              allow_lexical_overlap=allow_lexical_overlap,
+                                              **kwargs)
+
         th = Thesaurus.from_tsv(tsv_file, sim_threshold=sim_threshold,
                                 ngram_separator=ngram_separator,
                                 allow_lexical_overlap=True,
@@ -382,7 +394,7 @@ class Vectors(Thesaurus):
 
     def to_tsv(self, events_path, entries_path='', features_path='',
                entry_filter=lambda x: True, row_transform=lambda x: x,
-               gzipped=False, enforce_word_entry_pos_format=True):
+               gzipped=False, enforce_word_entry_pos_format=True, dense_hd5=False):
         """
         Writes this thesaurus to Byblo-compatible file like the one it was most likely read from. In the
         process converts all entries to a DocumentFeature, so all entries must be parsable into one. May reorder the
@@ -395,15 +407,30 @@ class Vectors(Thesaurus):
          it to a DocumentFeature. This is needed because some entries (e.g. african/J:amod-HEAD:leader) are not
          directly convertible (needs to be african/J_leader/N). Use this if the entries cannot be converted to
          DocumentFeature, e.g. if the data isn't PoS tagged.
+         :param dense_hd5: if true, convert to a pandas `DataFrame` and write to a compressed HDF file. This is a 30%
+          faster and produces 30% smaller files than using `gzipped`. This is only suitable for matrices with a small
+          number of columns- this method enforces a hard limit of 1000.
+          Requires PyTables and HDF5.
         :return: the file name
         """
         if enforce_word_entry_pos_format:
             rows = {i: DocumentFeature.from_string(row_transform(feat)) for (feat, i) in self.name2row.items()}
         else:
             rows = {i: feat for (feat, i) in self.name2row.items()}
-        write_vectors_to_disk(self.matrix.tocoo(), rows, self.columns, events_path,
-                              features_path=features_path, entries_path=entries_path,
-                              entry_filter=entry_filter, gzipped=gzipped)
+
+        if dense_hd5 and len(self.columns) <= 1000:
+            import pandas as pd
+
+            print(self.matrix.shape)
+            df = pd.DataFrame(self.matrix.A, index=self.row_names, columns=self.columns)
+            events_path += '.h5'
+            with pd.get_store(events_path, mode='w',
+                              complevel=9, complib='zlib') as store:
+                store['matrix'] = df
+        else:
+            write_vectors_to_disk(self.matrix.tocoo(), rows, self.columns, events_path,
+                                  features_path=features_path, entries_path=entries_path,
+                                  entry_filter=entry_filter, gzipped=gzipped)
         return events_path
 
     def to_dissect_core_space(self):
@@ -452,8 +479,9 @@ class Vectors(Thesaurus):
 
     def get_vector(self, entry):
         """
-        Returns a vector for the given entry. This differs from self.__getitem__ in that it returns a sparse matrix
-        instead of a list of (feature, count) tuples
+        Returns a vector for the given entry. This differs from `self.__getitem__` in that it returns a sparse matrix
+        instead of a list of (feature, count) tuples (in any order). The entries of the vectors are in the order of
+        `self.columns`, which is sorted.
         :param entry: the entry
         :type entry: str or DocumentFeature
         :return: vector for the entry
@@ -581,4 +609,26 @@ class Vectors(Thesaurus):
 
     def __str__(self):
         return '[%d vectors]' % len(self)
+
+        # def __eq__(self, other):
+        # if set(self.row_names) != set(other.row_names):
+        # from collections import Counter
+        #
+        #         print('rows do not match')
+        #         print(Counter(type(x) for x in self.row_names))
+        #         print(Counter(type(x) for x in other.row_names))
+        #         print(set(self.row_names) - set(other.row_names))
+        #         print(set(other.row_names) - set(self.row_names))
+        #         return False
+        #
+        #     if set(self.columns) != set(other.columns):
+        #         print('cols do not match')
+        #         return False
+        #     for entry in self.keys():
+        #         v1 = self.get_vector(entry)
+        #         v2 = other.get_vector(entry)
+        #         if not np.all(v1 == v2):
+        #             return False
+        #     return True
+
 
