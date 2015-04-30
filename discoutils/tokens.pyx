@@ -28,7 +28,7 @@ class DocumentFeature(object):
     # awful code, duplicated below
     pos_separator = '/'
     ngram_separator = '_'
-    DEFAULT_TOKEN_PATTERN = r'([^{0}{1}0-9\.\+\=\"\?\\5]+){0}([a-zA-Z]+)(?:{1}|$)' # !"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'
+    DEFAULT_TOKEN_PATTERN = r'([^{0}{1}0-9\.\+\=\"\?\\\|%012356789]+){0}([a-zA-Z]+)(?:{1}|$)' # !"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'
     _TOKEN_RE = re.compile(DEFAULT_TOKEN_PATTERN.format(pos_separator, ngram_separator))
 
     @classmethod
