@@ -11,7 +11,7 @@ from operator import itemgetter
 from sklearn.decomposition import TruncatedSVD
 from discoutils.tokens import DocumentFeature
 from discoutils.thesaurus_loader import Vectors
-from discoutils.io_utils import write_vectors_to_hdf
+from discoutils.io_utils import write_vectors_to_hdf, write_vectors_to_disk
 
 try:
     import cPickle as pickle
@@ -44,7 +44,7 @@ def filter_out_infrequent_entries(desired_counts_per_feature_type, thesaurus):
             # slice off the top desired_count and store them
             desired_rows.extend(list(sorted_idx_and_pos_matching[-desired_count:]))
         else:
-            #do not include
+            # do not include
             pass
 
         logging.info('Frequency filter keeping %d/%d %s entries ', desired_count,
@@ -52,7 +52,7 @@ def filter_out_infrequent_entries(desired_counts_per_feature_type, thesaurus):
     desired_rows = sorted(desired_rows)
     # check that the pos tag of each selected entry is what we think it is
     # for k, v in pos_to_rows.items():
-    #     assert all(k == x for x in pos_tags[v])
+    # assert all(k == x for x in pos_tags[v])
 
     # remove the vectors for infrequent entries, update list of pos tags too
     mat = mat[desired_rows, :]
@@ -85,23 +85,28 @@ def _do_svd_single(mat, n_components):
     return method, reduced_mat
 
 
-def _write_to_disk(reduced_mat, method, prefix, rows):
+def _write_to_disk(reduced_mat, method, prefix, rows, use_hdf=True):
     features_file = prefix + '.features.filtered.strings'
     events_file = prefix + '.events.filtered.strings'
     entries_file = prefix + '.entries.filtered.strings'
-    write_vectors_to_hdf(reduced_mat, rows,
-                          ['SVD:feat{0:05d}'.format(i) for i in range(reduced_mat.shape[1])],
-                          events_file)
+    if use_hdf:
+        write_vectors_to_hdf(reduced_mat, rows,
+                             ['SVD:feat{0:03d}'.format(i) for i in range(reduced_mat.shape[1])],
+                             events_file)
+    else:
+        write_vectors_to_disk(reduced_mat, rows,
+                              ['SVD:feat{0:03d}'.format(i) for i in range(reduced_mat.shape[1])],
+                              events_file)
 
-    # disabled because it causes a crash with large objects
-    # see http://bugs.python.org/issue11564
-    #with open(model_file, 'w') as outfile:
-    #    pickle.dump(method, outfile)
+        # disabled because it causes a crash with large objects
+        # see http://bugs.python.org/issue11564
+        # with open(model_file, 'w') as outfile:
+        #    pickle.dump(method, outfile)
 
 
 def do_svd(input_path, output_prefix,
            desired_counts_per_feature_type=[('N', 8), ('V', 4), ('J', 4), ('RB', 2), ('AN', 2)],
-           reduce_to=[3, 10, 15], apply_to=None, write=3):
+           reduce_to=[3, 10, 15], apply_to=None, write=3, use_hdf=True):
     """
 
     Performs truncated SVD. A copy of the trained sklearn SVD estimator will be also be saved
@@ -118,6 +123,9 @@ def do_svd(input_path, output_prefix,
     apply_to. Output will be writen to the same file
     :param write: Once SVD is trained on A and applied to B, output either A, B or vstack(A, B). Use values 0,
     1, and 2 respectively. Default is 3.
+    :param use_hdf: if true, store results as a pandas DF in HDF. This will enforce some constraints like not having
+    duplicate entries in the index, which I deliberately break with some of the unit tests. This switch is the easiest
+    way to avoid modifying the unit tests
     :type write: int
     :raise ValueError: If the loaded thesaurus is empty
     """
@@ -131,7 +139,7 @@ def do_svd(input_path, output_prefix,
     if apply_to:
         cols = set(cols)
         thes_to_apply_to = Vectors.from_tsv(apply_to, lowercasing=False,
-                                              column_filter=lambda foo: foo in cols)
+                                            column_filter=lambda foo: foo in cols)
         # get the names of each thesaurus entry
         extra_rows = [x for x in thes_to_apply_to.keys()]
         # vectorize second matrix with the vocabulary (columns) of the first thesaurus to ensure shapes match
@@ -162,7 +170,7 @@ def do_svd(input_path, output_prefix,
                 reduced_mat = method.transform(extra_matrix)
 
         path = '{}-SVD{}'.format(output_prefix, n_components)
-        _write_to_disk(scipy.sparse.coo_matrix(reduced_mat), method, path, rows)
+        _write_to_disk(scipy.sparse.coo_matrix(reduced_mat), method, path, rows, use_hdf=use_hdf)
 
 
 if __name__ == '__main__':
@@ -173,6 +181,6 @@ if __name__ == '__main__':
     # out_prefixes = [path.split('.')[0] for path in in_paths]
     # do_svd(['../FeatureExtractionToolkit/exp10-12/exp10.events.filtered.strings'], 'wtf',
     # desired_counts_per_feature_type=[('N', 8000), ('V', 4000), ('J', 4000), ('RB', 200), ('AN', 20000),
-    #                                  ('NN', 20000)],
+    # ('NN', 20000)],
     # reduce_to=[30, 300, 1000],
     # apply_to=['../FeatureExtractionToolkit/exp10-12/exp10.events.filtered.strings'])

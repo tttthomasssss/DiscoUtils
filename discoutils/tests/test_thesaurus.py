@@ -145,6 +145,7 @@ def test_similarity_calculation_match(vectors_c):
     Test that the similarity scores returned by get_nearest_neighbours_linear,
     get_nearest_neighbours_skipping and cos_similarity match
     """
+    vectors_c.init_sims()
     for method in ['get_nearest_neighbours_linear', 'get_nearest_neighbours_skipping']:
         for neigh, sim in getattr(vectors_c, method)('b/V'):
             assert abs(sim - vectors_c.euclidean_distance(neigh, 'b/V')) < 1e-5

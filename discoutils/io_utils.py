@@ -92,8 +92,7 @@ def write_vectors_to_hdf(matrix, row_index:list, column_index:list, events_path)
 
     logging.info('Writing vectors of shape %r to %s', matrix.shape, events_path)
     df = pd.DataFrame(matrix.A if issparse(matrix) else matrix,
-                      index=row_index, columns=column_index)
-    from collections import Counter
+                      index=map(str, row_index), columns=map(str, column_index))
     df.to_hdf(events_path, 'matrix', complevel=9, complib='zlib')
 
 

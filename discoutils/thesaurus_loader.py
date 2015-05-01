@@ -236,10 +236,7 @@ class Thesaurus(object):
         return mat, self.v.feature_names_, rows
 
     def __getattr__(self, name):
-        if hasattr(self._obj, name):
-            return getattr(self._obj, name)
-        else:
-            raise ValueError('%r (and wrapped dict) doesnt have an attribute %s' % (self, name))
+        return getattr(self._obj, name)
 
     def __setstate__(self, d):
         """
