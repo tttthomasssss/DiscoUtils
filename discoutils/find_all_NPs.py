@@ -14,16 +14,15 @@ verb_pattern = re.compile('^(\S+?/V)')  # a verb entry
 an_modifier_feature_pattern = re.compile('amod-DEP:(\S+/J)')
 
 nn_modifier_feature_pattern = re.compile('nn-DEP:(\S+/N)')  # an noun modifier in a nn relation
-nn_head_feature_pattern = re.compile('nn-HEAD:(\S+/N)')  # an noun head in a nn relation
 
 grammatical_object_feature_pattern = re.compile("[di]obj-DEP:(\S+/N)")  # a verb and its corresponding object
 grammatical_subject_feature_pattern = re.compile("nsubj-DEP:(\S+/N)")  # a verb and its corresponding nominal subject
 
 window_feature_pattern = re.compile('(T:\S+)')  # an window feature, as output by FET
 
-STOPWORDS = {'T:{}/'.format(x) for x in ENGLISH_STOP_WORDS +
-             ['\' \" ` `` . , ; ! ? \'\' '] +  # punctuation
-             list(str(num) for num in range(10))}  # numbers
+STOPWORDS = ['T:{}/'.format(x) for x in ENGLISH_STOP_WORDS] + \
+            ['\' \" ` `` . , ; ! ? \'\' '] + \
+            list(str(num) for num in range(10))  # numbers
 ACCEPTABLE_FEATURE_POS_TAGS = set('/J /N /V /DET /RB /CONJ /PRON'.split())
 
 
@@ -37,7 +36,7 @@ def filter_features(features, *blacklist):
     """
     # first remove the stopwords
     res = [f for f in features if
-           (any(features.endswith(pos) for pos in ACCEPTABLE_FEATURE_POS_TAGS)) and \
+           (any(f.endswith(pos) for pos in ACCEPTABLE_FEATURE_POS_TAGS)) and \
            (not any(f.startswith(stopw) for stopw in STOPWORDS))]
     # now remove words in the blacklist
     blacklist = {'T:{}'.format(b) for b in blacklist}
@@ -88,7 +87,7 @@ def get_window_vectors_for_NPs(infile, outstream, whitelist=ContainsEverything()
                 logging.info('Done %d lines', i)
 
             # check if there are any NPs in this line
-            nps = _get_NPs_in_line(line)
+            nps = list(_get_NPs_in_line(line))
             if nps:
                 features = window_feature_pattern.findall(line)
                 for head, modifier in nps:
@@ -111,7 +110,7 @@ def get_NPs(infile, outstream, whitelist=ContainsEverything()):
         for i, line in enumerate(inf):
             if i % REPORTING_INTERVAL == 0:
                 logging.info('Done %d lines', i)
-            for head, modifier in _get_NPs_in_line(line):
+            for head, modifier in list(_get_NPs_in_line(line)):
                 if modifier in whitelist:
                     phrase = '{}_{}'.format(modifier, head)
                     outstream.write('%s\n' % phrase)

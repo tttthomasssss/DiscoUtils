@@ -40,7 +40,7 @@ def test_find_all_NPs_with_window_vectors():
     s = StringIO()
     get_window_vectors_for_NPs('discoutils/tests/resources/exp10head.pbfiltered', s)
 
-    expected_features = {'T:problem', 'T:large/J',
+    expected_features = {'T:problem/N', 'T:large/J',
                          # 'T:what/CONJ', 'T:ever/N', # these are in the file but are stopwords
                          'T:feature/J', 'T:cat/N'}
     lines = s.getvalue().rstrip().split('\n')
