@@ -364,8 +364,10 @@ class Vectors(Thesaurus):
             df = pd.read_hdf(tsv_file, 'matrix')
             logging.info('Found a DF of shape %r in HDF file', df.shape)
             # pytables doesn't like unicode values and replaces them with an emptry string.
-            # remove these, we don't want to work with them anywa
+            # remove these, we don't want to work with them anyway
             df = df[df.index != '']
+            row_filter_mask = [row_filter(f, DocumentFeature.from_string(f)) for f in df.index]
+            df = df[row_filter_mask]
             logging.info('Dropped non-ascii rows, shape is now %r', df.shape)
             return Vectors.from_pandas_df(df, immutable=immutable,
                                           allow_lexical_overlap=allow_lexical_overlap,
