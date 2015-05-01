@@ -2,6 +2,7 @@ import gzip
 from itertools import groupby, chain
 import logging
 from operator import itemgetter
+import os
 from scipy.sparse import isspmatrix_coo, issparse
 import six
 
@@ -93,6 +94,9 @@ def write_vectors_to_hdf(matrix, row_index:list, column_index:list, events_path)
     logging.info('Writing vectors of shape %r to %s', matrix.shape, events_path)
     df = pd.DataFrame(matrix.A if issparse(matrix) else matrix,
                       index=map(str, row_index), columns=map(str, column_index))
+    if os.path.exists(events_path):
+        # PyTables fails if the file exist, but is not and HDF store. Remove the file
+        os.unlink(events_path)
     df.to_hdf(events_path, 'matrix', complevel=9, complib='zlib')
 
 
