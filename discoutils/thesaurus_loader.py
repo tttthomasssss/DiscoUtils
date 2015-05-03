@@ -368,7 +368,7 @@ class Vectors(Thesaurus):
             df = df[df.index != '']
             row_filter_mask = [row_filter(f, DocumentFeature.from_string(f)) for f in df.index]
             df = df[row_filter_mask]
-            logging.info('Dropped non-ascii rows, shape is now %r', df.shape)
+            logging.info('Dropped non-ascii rows and applied row filter. Shape is now %r', df.shape)
             return Vectors.from_pandas_df(df, immutable=immutable,
                                           allow_lexical_overlap=allow_lexical_overlap,
                                           **kwargs)
