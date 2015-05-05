@@ -97,3 +97,10 @@ def is_hdf(path_to_file):
     Checks if a file is a HDF store
     """
     return _check_file_magic(path_to_file, b'Hierarchical Data Format')
+
+
+def is_plaintext(path_to_file):
+    """
+    Checks if a file is ASCII plain text
+    """
+    return _check_file_magic(path_to_file, b'ASCII text')
