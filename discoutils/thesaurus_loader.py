@@ -68,8 +68,7 @@ class Thesaurus(object):
         Create a Thesaurus by parsing a Byblo-compatible TSV files (events or sims).
         If duplicate values are encoutered during parsing, only the latest will be kept.
 
-        :param tsv_file: path to input TSV file. If `gzipped` is True, this method searches for `tsv_file + '.gz'` and
-        uses it if it exists, otherwise it falls back to `tsv_file` and assumes it is gzipped.
+        :param tsv_file: path to input TSV file. May be gzipped.
         :type tsv_file:  str
         :param sim_threshold: min similarity between an entry and its neighbour for the neighbour to be included
         :type sim_threshold: float
@@ -103,10 +102,6 @@ class Thesaurus(object):
         DocumentFeature.recompile_pattern(pos_separator=pos_separator, ngram_separator=ngram_separator)
         to_return = dict()
         logging.info('Loading thesaurus %s from disk', tsv_file)
-        potential_gz_file = tsv_file + '.gz'
-        if os.path.exists(potential_gz_file) and is_gzipped(potential_gz_file):
-            logging.warning('Using .gz version of thesaurus')
-            tsv_file = potential_gz_file
 
         if not allow_lexical_overlap:
             logging.warning('DISALLOWING LEXICAL OVERLAP')
