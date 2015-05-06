@@ -4,7 +4,7 @@ import logging
 from sklearn.feature_extraction.stop_words import ENGLISH_STOP_WORDS
 from discoutils.misc import ContainsEverything
 
-REPORTING_INTERVAL = 100000
+REPORTING_INTERVAL = 5000000
 
 noun_pattern = re.compile('^(\S+?/N)')  # a noun entry
 adj_pattern = re.compile('^(\S+?/J)')  # an adjective entry
