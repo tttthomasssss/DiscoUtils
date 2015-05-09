@@ -24,11 +24,21 @@ def thesaurus_c():
                               ngram_separator='_')
 
 
-@pytest.fixture
-def vectors_c():
-    return Vectors.from_tsv('discoutils/tests/resources/exp0-0c.strings',
-                            sim_threshold=0,
-                            ngram_separator='_')
+@pytest.fixture(params=['txt', 'gz', 'hdf'])
+def vectors_c(request, tmpdir):
+    kind = request.param  # txt, gz or hdf
+
+    v = Vectors.from_tsv('discoutils/tests/resources/exp0-0c.strings', sim_threshold=0, ngram_separator='_')
+    if kind == 'txt':
+        # just read the plaintext file
+        return v
+    else:
+        outfile = str(tmpdir.join('events.txt'))
+        if kind == 'gz':
+            v.to_tsv(outfile, gzipped=True)
+        if kind == 'hdf':
+            v.to_tsv(outfile, dense_hd5=True)
+        return Vectors.from_tsv(outfile)
 
 
 @pytest.fixture
@@ -54,7 +64,7 @@ def test_nearest_neighbours(vectors_c):
     sims_df = DataFrame(euclidean_distances(vectors_c.matrix), index=vectors_c.row_names, columns=vectors_c.row_names)
     print('Cosine sims:\n', sims_df)  # all cosine sim in a readable format
 
-    vec_df = DataFrame(vectors_c.matrix.A, columns=vectors_c.columns, index=vectors_c.row_names)
+    vec_df = DataFrame(vectors_c.matrix, columns=vectors_c.columns, index=vectors_c.row_names)
     print('Vectors:\n', vec_df)
 
     vectors_c.init_sims(n_neighbors=1)  # insert all entries
@@ -272,10 +282,14 @@ def test_vectors_to_tsv(vectors_c, tmpdir):
     vectors_c.to_tsv(filename, gzipped=True)
     from_disk = Vectors.from_tsv(filename)
 
-    # can't just assert from_disk == thesaurus_c, because to_tsv may reorder the columns
-    for k, v in vectors_c.items():
-        assert k in from_disk.keys()
-        assert set(v) == set(vectors_c[k])
+    if hasattr(vectors_c, 'df'):
+        # this is in dense format
+        np.testing.assert_array_equal(vectors_c.matrix, from_disk.matrix)
+    else:
+        # sparse format: can't just assert from_disk == thesaurus_c, because to_tsv may reorder the columns
+        for k, v in vectors_c.items():
+            assert k in from_disk.keys()
+            assert set(v) == set(vectors_c[k])
 
 
 def test_get_vector(vectors_c):
@@ -419,16 +433,15 @@ def test_loading_from_gz():
         assert k in t2
         assert v == t2[k]
 
+
 def test_loading_from_h5():
     t1 = Vectors.from_tsv('discoutils/tests/resources/exp0-0a.strings')
     t2 = Vectors.from_tsv('discoutils/tests/resources/exp0-0a.strings.h5')
-    for k, v in t1.items():
+    for k in t1.keys():
         assert k in t2
-        # t2[k] may return the features in any order, sort them
-        # this test file contain a Thesaurus, not Vectors, so zeroes will be added to some "features"
-        # remove such features
-        actual_features = [(feat, freq) for feat, freq in t2[k] if freq > 0]
-        assert sorted(v) == sorted(actual_features)
+        v1 = t1.get_vector(k)
+        v2 = t2.get_vector(k)
+        np.testing.assert_array_equal(v1.A, v2.A)
 
 
 def test_from_pandas_data_frame(vectors_c):

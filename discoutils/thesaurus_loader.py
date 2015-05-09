@@ -4,11 +4,10 @@ import contextlib
 import gzip
 import logging
 import shelve
-import os
 import numpy as np
 import six
 from scipy.spatial.distance import euclidean
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, issparse, coo_matrix
 from discoutils.tokens import DocumentFeature
 from discoutils.collections_utils import walk_nonoverlapping_pairs
 from discoutils.io_utils import write_vectors_to_disk, write_vectors_to_hdf
@@ -364,9 +363,9 @@ class Vectors(Thesaurus):
             row_filter_mask = [row_filter(f, DocumentFeature.from_string(f)) for f in df.index]
             df = df[row_filter_mask]
             logging.info('Dropped non-ascii rows and applied row filter. Shape is now %r', df.shape)
-            return Vectors.from_pandas_df(df, immutable=immutable,
-                                          allow_lexical_overlap=allow_lexical_overlap,
-                                          **kwargs)
+            return DenseVectors(df, immutable=immutable,
+                                allow_lexical_overlap=allow_lexical_overlap,
+                                **kwargs)
 
         th = Thesaurus.from_tsv(tsv_file, sim_threshold=sim_threshold,
                                 ngram_separator=ngram_separator,
@@ -420,9 +419,9 @@ class Vectors(Thesaurus):
         if dense_hd5 and len(self.columns) <= 1000:
             write_vectors_to_hdf(self.matrix, self.row_names, self.columns, events_path)
         else:
-            write_vectors_to_disk(self.matrix.tocoo(), rows, self.columns, events_path,
-                features_path=features_path, entries_path=entries_path,
-                entry_filter=entry_filter, gzipped=gzipped)
+            write_vectors_to_disk(coo_matrix(self.matrix), rows, self.columns, events_path,
+                                  features_path=features_path, entries_path=entries_path,
+                                  entry_filter=entry_filter, gzipped=gzipped)
         return events_path
 
     def to_dissect_core_space(self):
@@ -435,16 +434,8 @@ class Vectors(Thesaurus):
 
         mat, cols, rows = self.to_sparse_matrix()
         mat = SparseMatrix(mat)
-        s = Space(mat, rows, cols)
+        return Space(mat, rows, cols)
 
-        # test that the mapping from string to its vector has not been messed up
-        for i in range(min(10, len(self))):
-            s1 = s.get_row(rows[i]).mat
-            s2 = self.v.transform(dict(self[rows[i]]))
-            # sparse matrices do not currently support equality testing
-            assert abs(s1 - s2).nnz == 0
-
-        return s
 
     def to_dissect_sparse_files(self, output_prefix, row_transform=None):
         """
@@ -464,9 +455,8 @@ class Vectors(Thesaurus):
                     outfile.write('{} {} {}\n'.format(tmp_entry, feature, count))
 
         # write dissect columns file
-        columns = set(feature for vector in self.values() for (feature, count) in vector)
         with open('{}.cols'.format(output_prefix), 'w') as outfile:
-            for feature in sorted(columns):
+            for feature in sorted(set(self.columns)):
                 outfile.write('{}\n'.format(feature))
 
     def get_vector(self, entry):
@@ -527,7 +517,8 @@ class Vectors(Thesaurus):
         if X.shape[1] < 1000:
             # if the matrix is smallish, make it dense and used KD Tree, it's 20-100x faster to query
             # and 4x slower to build
-            X = X.A
+            if issparse(X):
+                X = X.A
             knn = 'kd_tree'
         self.nn = NearestNeighbors(algorithm=knn,
                                    metric='l2',
@@ -553,7 +544,7 @@ class Vectors(Thesaurus):
         # so we need to ask for one extra neighbour, but without exceeding the number of available neighbours
         n_neigh = min(self.n_neighbours + (entry in self.search_pool), len(self.search_pool))
         v = self.get_vector(entry)
-        distances, indices = self.nn.kneighbors(v if self.nn.algorithm == 'brute' else v.A,
+        distances, indices = self.nn.kneighbors(v.A if issparse(v) else v,
                                                 n_neighbors=n_neigh)
         neigh = [(self.selected_row2name[indices[0][i]], distances[0][i]) for i in range(indices.shape[1])]
         if not self.allow_lexical_overlap:
@@ -595,7 +586,8 @@ class Vectors(Thesaurus):
         v1 = self.get_vector(first)
         v2 = self.get_vector(second)
         if v1 is not None and v2 is not None:
-            return euclidean(v1.A, v2.A)
+            return euclidean(v1.A if issparse(v1) else v1,
+                             v2.A if issparse(v2) else v2, )
         else:
             return None
 
@@ -607,10 +599,10 @@ class Vectors(Thesaurus):
         # from collections import Counter
         #
         # print('rows do not match')
-        #         print(Counter(type(x) for x in self.row_names))
-        #         print(Counter(type(x) for x in other.row_names))
-        #         print(set(self.row_names) - set(other.row_names))
-        #         print(set(other.row_names) - set(self.row_names))
+        # print(Counter(type(x) for x in self.row_names))
+        # print(Counter(type(x) for x in other.row_names))
+        # print(set(self.row_names) - set(other.row_names))
+        # print(set(other.row_names) - set(self.row_names))
         #         return False
         #
         #     if set(self.columns) != set(other.columns):
@@ -623,4 +615,47 @@ class Vectors(Thesaurus):
         #             return False
         #     return True
 
+
+class DenseVectors(Vectors):
+    """
+    A dense version of Vectors that stores data in a pandas DataFrame. This uses less
+    memory for dense vectors and is much faster to read/write to disk.
+    """
+
+    def __init__(self, df, noise=False, **kwargs):
+        self.df = df
+        self.__dict__.update(**kwargs)
+
+        self.matrix, self.columns, self.row_names = self.df.values, self.df.columns, self.df.index.values
+        if noise:
+            logging.info('Adding uniform noise [-{0}, +{0}] to non-zero vector dimensions'.format(noise))
+            self.matrix += np.random.uniform(-noise, noise, self.matrix.shape)
+        self.name2row = {feature: i for (i, feature) in enumerate(self.row_names)}
+
+    def __contains__(self, item):
+        if isinstance(item, DocumentFeature):
+            item = DocumentFeature.tokens_as_str(item)
+        return item in self.name2row
+
+    def get_vector(self, item):
+        if isinstance(item, DocumentFeature):
+            item = DocumentFeature.tokens_as_str(item)
+        if item not in self.name2row:
+            return None
+        return csr_matrix(self.df.ix[item].values)  # for compat with Vectors
+
+    def __getitem__(self, item):
+        return zip(self.columns, self.get_vector(item).A.ravel())
+
+    def keys(self):
+        return self.df.index
+
+    def to_sparse_matrix(self):
+        return csr_matrix(self.matrix), list(self.columns), list(self.row_names)
+
+    def __len__(self):
+        return len(self.row_names)
+
+    def to_tsv(self, events_path, **kwargs):
+        return super().to_tsv(events_path, dense_hd5=True)
 
