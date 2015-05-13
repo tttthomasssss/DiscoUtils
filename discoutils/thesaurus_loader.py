@@ -356,7 +356,7 @@ class Vectors(Thesaurus):
             import pandas as pd
 
             df = pd.read_hdf(tsv_file, 'matrix')
-            logging.info('Found a DF of shape %r in HDF file', df.shape)
+            logging.info('Found a DF of shape %r in HDF file %s', df.shape, tsv_file)
             # pytables doesn't like unicode values and replaces them with an emptry string.
             # remove these, we don't want to work with them anyway
             df = df[df.index != '']
