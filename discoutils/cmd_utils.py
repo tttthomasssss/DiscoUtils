@@ -3,6 +3,7 @@ import logging
 import os
 import sys
 from discoutils.misc import mkdirs_if_not_exists, temp_chdir
+from discoutils.thesaurus_loader import DenseVectors
 
 if sys.version_info.major == 3:
     import iterpipes3 as iterpipes
@@ -197,7 +198,13 @@ def build_thesaurus_out_of_vectors(vectors_path, out_dir, threads=4, num_neighbo
     events_file = os.path.join(out_dir, outf_basename + '.events.filtered.strings')
     entries_file = os.path.join(out_dir, outf_basename + '.entries.filtered.strings')
     features_file = os.path.join(out_dir, outf_basename + '.features.filtered.strings')
-    v.to_tsv(events_file, entries_file, features_file, gzipped=False)
+
+    if isinstance(v, DenseVectors):
+        # oh what a hack: DenseVectors do not natively support writing to plaintext (that byblo likes)
+        # so let's pretend it's a Vectors object (replacing the self parameter)
+        Vectors.to_tsv(v, events_file, entries_file, features_file, gzipped=False, dense_hd5=False)
+    else:
+        v.to_tsv(events_file, entries_file, features_file, gzipped=False)
 
     # write the byblo conf file
     conf = '--input {} --output {} --threads {} --similarity-min 0.01 -k {} ' \
