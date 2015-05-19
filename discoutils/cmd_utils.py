@@ -213,6 +213,7 @@ def build_thesaurus_out_of_vectors(vectors_path, out_dir, threads=4, num_neighbo
     with temp_chdir(BYBLO_BASE_DIR):
         reindex_all_byblo_vectors(outf_basename)
         run_byblo(conf_path, touch_input_file=True)
+        unindex_all_byblo_vectors(outf_basename)
 
 
 def get_git_hash():
