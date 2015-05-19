@@ -12,7 +12,6 @@ from operator import itemgetter
 from discoutils.thesaurus_loader import Thesaurus, Vectors
 from discoutils.collections_utils import walk_nonoverlapping_pairs
 
-
 __author__ = 'mmb28'
 
 
@@ -27,8 +26,11 @@ def thesaurus_c():
 @pytest.fixture(params=['txt', 'gz', 'hdf'])
 def vectors_c(request, tmpdir):
     kind = request.param  # txt, gz or hdf
-
     v = Vectors.from_tsv('discoutils/tests/resources/exp0-0c.strings', sim_threshold=0, ngram_separator='_')
+    return _generate_hdf_gzip_repr(kind, tmpdir, v)
+
+
+def _generate_hdf_gzip_repr(kind, tmpdir, v):
     if kind == 'txt':
         # just read the plaintext file
         return v
@@ -39,6 +41,18 @@ def vectors_c(request, tmpdir):
         if kind == 'hdf':
             v.to_tsv(outfile, dense_hd5=True)
         return Vectors.from_tsv(outfile)
+
+
+@pytest.fixture(params=['txt', 'gz', 'hdf'])
+def overlapping_vectors(request, tmpdir, _overlapping_vectors):
+    kind = request.param  # txt, gz or hdf
+    return _generate_hdf_gzip_repr(kind, tmpdir, _overlapping_vectors)
+
+
+@pytest.fixture(params=[True, False])
+def _overlapping_vectors(request):
+    return Vectors.from_tsv('discoutils/tests/resources/lexical-overlap-vectors.txt',
+                            allow_lexical_overlap=request.param)
 
 
 @pytest.fixture
@@ -190,6 +204,18 @@ def test_disallow_lexical_overlap(thes_without_overlap):
     assert len(thes_without_overlap['daily/J_pais/N']) == 2
     # check the right neighbour is kept
     assert thes_without_overlap['japanese/J_yen/N'][0] == ('daily/J_mark/N', 0.981391)
+
+
+def test_disallow_lexical_overlap_with_vectors(overlapping_vectors):
+    m = overlapping_vectors.matrix
+    assert m.shape == (4, 4)
+
+    overlapping_vectors.init_sims()
+    neigh = overlapping_vectors.get_nearest_neighbours('daily/J_pais/N')
+    if overlapping_vectors.allow_lexical_overlap:
+        assert len(neigh) == 3
+    else:
+        assert neigh == [('spanish/J', 0.0)]
 
 
 @pytest.mark.parametrize('thes', [thesaurus_c(), thes_with_overlap(), thes_without_overlap()])
@@ -480,7 +506,6 @@ class TestLoad_thesauri(TestCase):
     def _reload_thesaurus(self):
         self.thesaurus = Thesaurus.from_tsv(self.tsv_file, **self.params)
 
-
     def _reload_and_assert(self, entry_count, neighbour_count):
         th = Thesaurus.from_tsv(self.tsv_file, **self.params)
         all_neigh = [x for v in th.values() for x in v]
@@ -496,7 +521,6 @@ class TestLoad_thesauri(TestCase):
         with self.assertRaises(KeyError):
             self.thesaurus['kasdjhfka']
 
-
     def test_from_shelved_dict(self):
         filename = 'thesaurus_unit_tests.tmp'
         self.thesaurus.to_shelf(filename)
@@ -505,7 +529,6 @@ class TestLoad_thesauri(TestCase):
         from_shelf = Thesaurus(d)
         for k, v in self.thesaurus.items():
             self.assertEqual(self.thesaurus[k], from_shelf[k])
-
 
         def modify():
             from_shelf['some_value'] = ('should not be possible', 0)
@@ -526,7 +549,6 @@ class TestLoad_thesauri(TestCase):
             self._reload_thesaurus()
             self._reload_and_assert(j, k)
 
-
     def test_include_self(self):
         for i, j, k in zip([False, True], [7, 7], [14, 21]):
             self.params['include_self'] = i
@@ -543,7 +565,6 @@ class TestLoad_thesauri(TestCase):
                 else:
                     self.assertNotEqual(entry, neighbours[0][0])
                     self.assertGreaterEqual(1, neighbours[0][1])
-
 
     def test_iterate_nonoverlapping_pairs(self):
         inp = [0, 1, 2, 3, 4, 5, 6, 7, 8]
