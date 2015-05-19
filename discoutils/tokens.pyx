@@ -28,7 +28,8 @@ class DocumentFeature(object):
     # awful code, duplicated below
     pos_separator = '/'
     ngram_separator = '_'
-    _TOKEN_RE = re.compile(r'([^{0}{1}]+){0}([a-zA-Z]+)(?:{1}|$)'.format(pos_separator, ngram_separator))
+    DEFAULT_TOKEN_PATTERN = r'([^{0}{1}0-9\.\+\=\"\?\\\|%012356789]+){0}([a-zA-Z]+)(?:{1}|$)'  # !"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'
+    _TOKEN_RE = re.compile(DEFAULT_TOKEN_PATTERN.format(pos_separator, ngram_separator))
 
     @classmethod
     def recompile_pattern(cls, pos_separator='/', ngram_separator='_'):
@@ -39,7 +40,7 @@ class DocumentFeature(object):
         """
         #  not an underscore + text + underscore or end of line
         #  see re.split documentation on capturing (the first two) and non-capturing groups (the last one)
-        cls._TOKEN_RE = re.compile(r'([^{0}{1}]+){0}([a-zA-Z]+)(?:{1}|$)'.format(pos_separator, ngram_separator))
+        cls._TOKEN_RE = re.compile(cls.DEFAULT_TOKEN_PATTERN.format(pos_separator, ngram_separator))
         cls.pos_separator = pos_separator
         cls.ngram_separator = ngram_separator
 
@@ -68,7 +69,7 @@ class DocumentFeature(object):
                                   ('EMPTY', '1-GRAM', '2-GRAM', '3-GRAM')[len(tokens)])
             return DocumentFeature(type, tuple(tokens))
         except Exception as e:
-            logging.error('Cannot create token out of string %s', string)
+            # logging.error('Cannot create token out of string %s', string)
             return DocumentFeature('EMPTY', tuple())
 
     def tokens_as_str(self):
@@ -108,14 +109,14 @@ class DocumentFeature(object):
         positions beg (inclusive) and end (exclusive). For example:
 
         >>> f = DocumentFeature.from_string('cats/N_like/V_dogs/N')
-        >>> print f[1]
-        1-GRAM:(like/V,)
-        >>> print f[1:]
-        VO:(like/V, dogs/N)
-        >>> print f[0:]
-        SVO:(cats/N, like/V, dogs/N)
-        >>> print f[0]
-        1-GRAM:(cats/N,)
+        >>> print(f[1])
+        like/V
+        >>> print(f[1:])
+        like/V_dogs/N
+        >>> print(f[0:])
+        cats/N_like/V_dogs/N
+        >>> print(f[0])
+        cats/N
 
 
         :param beg:
@@ -141,7 +142,7 @@ class DocumentFeature(object):
         return self.tokens_as_str()
 
     def __repr__(self):
-        return self.__str__()
+        return 'DF:' + str(self)
 
     def __eq__(self, other):
         return (isinstance(other, self.__class__)

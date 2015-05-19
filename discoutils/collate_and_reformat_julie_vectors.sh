@@ -15,6 +15,6 @@ cat $x/*giga* > $y/exp10-12_AN_NNvectors
 python -c "
 from discoutils.io_utils import reformat_entries, clean;
 for i in [10,11]:
-    observed_ngram_vectors_file = '/mnt/lustre/scratch/inf/mmb28/FeatureExtrationToolkit/apdt_vectors/exp%d-12_AN_NNvectors' % i;
+    observed_ngram_vectors_file = '/mnt/lustre/scratch/inf/mmb28/FeatureExtractionToolkit/apdt_vectors/exp%d-12_AN_NNvectors' % i;
     reformat_entries(observed_ngram_vectors_file, '-cleaned', clean);
 "

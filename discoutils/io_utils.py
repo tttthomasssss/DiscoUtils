@@ -2,8 +2,8 @@ import gzip
 from itertools import groupby, chain
 import logging
 from operator import itemgetter
-import numpy as np
-from scipy.sparse import isspmatrix_coo
+import os
+from scipy.sparse import isspmatrix_coo, issparse
 import six
 
 __author__ = 'mmb28'
@@ -30,6 +30,8 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
     :param entry_filter: callable, called for each entry. Takes a single DocumentFeature parameter. Returns true
     if the entry has to be written and false if the entry has to be ignored. Defaults to True.
     """
+    import numpy as np
+
     if not any([vectors_path, features_path, entries_path]):
         raise ValueError('At least one of vectors_path, features_path or entries_path required')
 
@@ -64,7 +66,7 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
                 s = '%s\t%s\n' % (entry, '\t'.join(map(str, chain.from_iterable(features_and_counts))))
                 outfile.write(s.encode('utf8') if gzipped else s)
                 accepted_entry_counts[entry] = sum(x[1] for x in features_and_counts)
-            if row_num % 5000 == 0 and outfile:
+            if row_num % 20000 == 0 and outfile:
                 logging.info('Processed %d vectors', row_num)
 
     outfile.close()
@@ -84,6 +86,18 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
                     logging.warning('Feature %s does not occur in vector set', feature)
                 else:
                     outfile.write('%s\t%f\n' % (feature, count))
+
+
+def write_vectors_to_hdf(matrix, row_index:list, column_index:list, events_path):
+    import pandas as pd
+
+    logging.info('Writing vectors of shape %r to %s', matrix.shape, events_path)
+    df = pd.DataFrame(matrix.A if issparse(matrix) else matrix,
+                      index=map(str, row_index), columns=map(str, column_index))
+    if os.path.exists(events_path):
+        # PyTables fails if the file exist, but is not and HDF store. Remove the file
+        os.unlink(events_path)
+    df.to_hdf(events_path, 'matrix', complevel=9, complib='zlib')
 
 
 def reformat_entries(filename, suffix, function, separator='\t'):

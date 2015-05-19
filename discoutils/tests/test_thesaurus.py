@@ -12,7 +12,6 @@ from operator import itemgetter
 from discoutils.thesaurus_loader import Thesaurus, Vectors
 from discoutils.collections_utils import walk_nonoverlapping_pairs
 
-
 __author__ = 'mmb28'
 
 
@@ -24,11 +23,36 @@ def thesaurus_c():
                               ngram_separator='_')
 
 
-@pytest.fixture
-def vectors_c():
-    return Vectors.from_tsv('discoutils/tests/resources/exp0-0c.strings',
-                            sim_threshold=0,
-                            ngram_separator='_')
+@pytest.fixture(params=['txt', 'gz', 'hdf'])
+def vectors_c(request, tmpdir):
+    kind = request.param  # txt, gz or hdf
+    v = Vectors.from_tsv('discoutils/tests/resources/exp0-0c.strings', sim_threshold=0, ngram_separator='_')
+    return _generate_hdf_gzip_repr(kind, tmpdir, v)
+
+
+def _generate_hdf_gzip_repr(kind, tmpdir, v):
+    if kind == 'txt':
+        # just read the plaintext file
+        return v
+    else:
+        outfile = str(tmpdir.join('events.txt'))
+        if kind == 'gz':
+            v.to_tsv(outfile, gzipped=True)
+        if kind == 'hdf':
+            v.to_tsv(outfile, dense_hd5=True)
+        return Vectors.from_tsv(outfile)
+
+
+@pytest.fixture(params=['txt', 'gz', 'hdf'])
+def overlapping_vectors(request, tmpdir, _overlapping_vectors):
+    kind = request.param  # txt, gz or hdf
+    return _generate_hdf_gzip_repr(kind, tmpdir, _overlapping_vectors)
+
+
+@pytest.fixture(params=[True, False])
+def _overlapping_vectors(request):
+    return Vectors.from_tsv('discoutils/tests/resources/lexical-overlap-vectors.txt',
+                            allow_lexical_overlap=request.param)
 
 
 @pytest.fixture
@@ -49,12 +73,12 @@ def thes_with_overlap():
 
 def test_nearest_neighbours(vectors_c):
     entries_to_include = ['b/V', 'g/N', 'a/N']
-    from sklearn.metrics.pairwise import cosine_distances
+    from sklearn.metrics.pairwise import euclidean_distances
 
-    sims_df = DataFrame(1 - cosine_distances(vectors_c.matrix), index=vectors_c.row_names, columns=vectors_c.row_names)
+    sims_df = DataFrame(euclidean_distances(vectors_c.matrix), index=vectors_c.row_names, columns=vectors_c.row_names)
     print('Cosine sims:\n', sims_df)  # all cosine sim in a readable format
 
-    vec_df = DataFrame(vectors_c.matrix.A, columns=vectors_c.columns, index=vectors_c.row_names)
+    vec_df = DataFrame(vectors_c.matrix, columns=vectors_c.columns, index=vectors_c.row_names)
     print('Vectors:\n', vec_df)
 
     vectors_c.init_sims(n_neighbors=1)  # insert all entries
@@ -62,7 +86,7 @@ def test_nearest_neighbours(vectors_c):
     neigh = vectors_c.get_nearest_neighbours('b/V')
     assert len(neigh) == 1
     assert neigh[0][0] == 'a/J_b/N'  # seeking nearest neighbour of something we trained on
-    assert abs(neigh[0][1] - 0.976246) < 1e-5
+    assert abs(neigh[0][1] - 0.223607) < 1e-5
     assert vectors_c.nn._fit_X.shape == (5, 5)
 
     vectors_c.init_sims(entries_to_include, n_neighbors=1)
@@ -70,28 +94,28 @@ def test_nearest_neighbours(vectors_c):
     assert len(neigh) == 1
     assert len(neigh) == 1
     assert neigh[0][0] == 'a/N'  # seeking nearest neighbour of something we trained on
-    assert abs(neigh[0][1] - 0.822434) < 1e-5
+    assert abs(neigh[0][1] - 0.387298) < 1e-5
     assert vectors_c.nn._fit_X.shape == (3, 5)
 
     neigh = vectors_c.get_nearest_neighbours('a/J_b/N')
     assert len(neigh) == 1
     assert neigh[0][0] == 'b/V'
-    assert abs(neigh[0][1] - 0.976246) < 1e-5
+    assert abs(neigh[0][1] - 0.223607) < 1e-5
 
     vectors_c.init_sims(entries_to_include, n_neighbors=2)
     neigh = vectors_c.get_nearest_neighbours('b/V')
     assert len(neigh) == 2
     assert neigh[0][0] == 'a/N'
     assert neigh[1][0] == 'g/N'
-    assert abs(neigh[0][1] - 0.8224338) < 1e-5
-    assert abs(neigh[1][1] - 0.267494) < 1e-5
+    assert abs(neigh[0][1] - 0.387298) < 1e-5
+    assert abs(neigh[1][1] - 1.315295) < 1e-5
 
     # test lexical overlap
     vectors_c.allow_lexical_overlap = False
     vectors_c.init_sims(entries_to_include, n_neighbors=2)
     neigh = vectors_c.get_nearest_neighbours('b/V')
     assert neigh[0][0] == 'a/N'
-    assert abs(neigh[0][1] - 0.8224338) < 1e-5
+    assert abs(neigh[0][1] - 0.387298) < 1e-5
     assert len(neigh) == 2
 
 
@@ -109,6 +133,7 @@ def test_nearest_neighbours_too_few_neighbours(vectors_c):
 
 
 def test_get_nearest_neigh_compare_to_byblo(vectors_c):
+    pytest.skip('Byblo uses cosine sim, and we use L2 for speed (KD Trees rule)')
     thes = 'discoutils/tests/resources/thesaurus_exp0-0c/test.sims.neighbours.strings'
     if not os.path.exists(thes):
         pytest.skip("The required resources for this test are missing. Please add them.")
@@ -144,9 +169,10 @@ def test_similarity_calculation_match(vectors_c):
     Test that the similarity scores returned by get_nearest_neighbours_linear,
     get_nearest_neighbours_skipping and cos_similarity match
     """
+    vectors_c.init_sims()
     for method in ['get_nearest_neighbours_linear', 'get_nearest_neighbours_skipping']:
         for neigh, sim in getattr(vectors_c, method)('b/V'):
-            assert abs(sim - vectors_c.cos_similarity(neigh, 'b/V')) < 1e-5
+            assert abs(sim - vectors_c.euclidean_distance(neigh, 'b/V')) < 1e-5
 
 
 def test_get_vector(vectors_c):
@@ -158,10 +184,10 @@ def test_get_vector(vectors_c):
         assert_array_almost_equal(a, b)
 
 
-def test_cosine_similarity(vectors_c):
-    assert vectors_c.cos_similarity('a/N', 'g/N') > 0
-    assert vectors_c.cos_similarity('a/N', 'a/N') == 1.0
-    assert vectors_c.cos_similarity('afdsf', 'fad') is None
+def test_euclidean_distance(vectors_c):
+    assert vectors_c.euclidean_distance('a/N', 'g/N') > 0
+    assert vectors_c.euclidean_distance('a/N', 'a/N') == 0.0
+    assert vectors_c.euclidean_distance('afdsf', 'fad') is None
 
 
 def test_loading_bigram_thesaurus(thesaurus_c):
@@ -178,6 +204,18 @@ def test_disallow_lexical_overlap(thes_without_overlap):
     assert len(thes_without_overlap['daily/J_pais/N']) == 2
     # check the right neighbour is kept
     assert thes_without_overlap['japanese/J_yen/N'][0] == ('daily/J_mark/N', 0.981391)
+
+
+def test_disallow_lexical_overlap_with_vectors(overlapping_vectors):
+    m = overlapping_vectors.matrix
+    assert m.shape == (4, 4)
+
+    overlapping_vectors.init_sims()
+    neigh = overlapping_vectors.get_nearest_neighbours('daily/J_pais/N')
+    if overlapping_vectors.allow_lexical_overlap:
+        assert len(neigh) == 3
+    else:
+        assert neigh == [('spanish/J', 0.0)]
 
 
 @pytest.mark.parametrize('thes', [thesaurus_c(), thes_with_overlap(), thes_without_overlap()])
@@ -268,12 +306,16 @@ def test_vectors_to_tsv(vectors_c, tmpdir):
     # these are feature vectors, columns(features) can be reordered
     filename = str(tmpdir.join('outfile.txt'))
     vectors_c.to_tsv(filename, gzipped=True)
-    from_disk = Vectors.from_tsv(filename, gzipped=True)
+    from_disk = Vectors.from_tsv(filename)
 
-    # can't just assert from_disk == thesaurus_c, because to_tsv may reorder the columns
-    for k, v in vectors_c.items():
-        assert k in from_disk.keys()
-        assert set(v) == set(vectors_c[k])
+    if hasattr(vectors_c, 'df'):
+        # this is in dense format
+        np.testing.assert_array_equal(vectors_c.matrix, from_disk.matrix)
+    else:
+        # sparse format: can't just assert from_disk == thesaurus_c, because to_tsv may reorder the columns
+        for k, v in vectors_c.items():
+            assert k in from_disk.keys()
+            assert set(v) == set(vectors_c[k])
 
 
 def test_get_vector(vectors_c):
@@ -410,12 +452,22 @@ def test_max_num_neighbours_and_no_lexical_overlap():
     assert len(t['trade/N_law/N']) == 1
 
 
-def test_loading_from_tar():
-    t1 = Thesaurus.from_tsv('discoutils/tests/resources/exp0-0a.strings', gzipped=False)
-    t2 = Thesaurus.from_tsv('discoutils/tests/resources/exp0-0a.strings.gz', gzipped=True)
+def test_loading_from_gz():
+    t1 = Thesaurus.from_tsv('discoutils/tests/resources/exp0-0a.strings')
+    t2 = Thesaurus.from_tsv('discoutils/tests/resources/exp0-0a.strings.gzip')
     for k, v in t1.items():
         assert k in t2
         assert v == t2[k]
+
+
+def test_loading_from_h5():
+    t1 = Vectors.from_tsv('discoutils/tests/resources/exp0-0a.strings')
+    t2 = Vectors.from_tsv('discoutils/tests/resources/exp0-0a.strings.h5')
+    for k in t1.keys():
+        assert k in t2
+        v1 = t1.get_vector(k)
+        v2 = t2.get_vector(k)
+        np.testing.assert_array_equal(v1.A, v2.A)
 
 
 def test_from_pandas_data_frame(vectors_c):
@@ -454,7 +506,6 @@ class TestLoad_thesauri(TestCase):
     def _reload_thesaurus(self):
         self.thesaurus = Thesaurus.from_tsv(self.tsv_file, **self.params)
 
-
     def _reload_and_assert(self, entry_count, neighbour_count):
         th = Thesaurus.from_tsv(self.tsv_file, **self.params)
         all_neigh = [x for v in th.values() for x in v]
@@ -470,7 +521,6 @@ class TestLoad_thesauri(TestCase):
         with self.assertRaises(KeyError):
             self.thesaurus['kasdjhfka']
 
-
     def test_from_shelved_dict(self):
         filename = 'thesaurus_unit_tests.tmp'
         self.thesaurus.to_shelf(filename)
@@ -479,7 +529,6 @@ class TestLoad_thesauri(TestCase):
         from_shelf = Thesaurus(d)
         for k, v in self.thesaurus.items():
             self.assertEqual(self.thesaurus[k], from_shelf[k])
-
 
         def modify():
             from_shelf['some_value'] = ('should not be possible', 0)
@@ -500,7 +549,6 @@ class TestLoad_thesauri(TestCase):
             self._reload_thesaurus()
             self._reload_and_assert(j, k)
 
-
     def test_include_self(self):
         for i, j, k in zip([False, True], [7, 7], [14, 21]):
             self.params['include_self'] = i
@@ -517,7 +565,6 @@ class TestLoad_thesauri(TestCase):
                 else:
                     self.assertNotEqual(entry, neighbours[0][0])
                     self.assertGreaterEqual(1, neighbours[0][1])
-
 
     def test_iterate_nonoverlapping_pairs(self):
         inp = [0, 1, 2, 3, 4, 5, 6, 7, 8]
