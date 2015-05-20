@@ -336,9 +336,9 @@ def test_loading_unordered_feature_lists(tmpdir):
     v.to_tsv(filename)
 
     v1 = v.from_tsv(filename)
-    assert v.name2row == v1.name2row
-    assert v.columns == v1.columns
-    assert_array_equal(v.matrix.A, v1.matrix.A)
+    assert v.columns == v1.columns # rows can be in any order, but columns need to be sorted
+    for word in d.keys():
+        assert_array_equal(v.get_vector(word).A, v.get_vector(word).A)
 
 
 def test_to_dissect_sparse_files(vectors_c, tmpdir):
