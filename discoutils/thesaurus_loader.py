@@ -424,6 +424,10 @@ class Vectors(Thesaurus):
                                   entry_filter=entry_filter, gzipped=gzipped)
         return events_path
 
+    def to_plain_txt(self, events_path, entries_path='', features_path=''):
+        self.to_tsv(events_path, entries_path=entries_path, features_path=features_path,
+                    gzipped=False, dense_hd5=False)
+
     def to_dissect_core_space(self):
         """
         Converts this object to a composes.semantic_space.space.Space
@@ -662,3 +666,14 @@ class DenseVectors(Vectors):
 
     def to_tsv(self, events_path, **kwargs):
         return super().to_tsv(events_path, dense_hd5=True)
+
+    def to_plain_txt(self, events_path, entries_path='', features_path=''):
+        super().to_tsv(events_path, entries_path=entries_path, features_path=features_path,
+                       gzipped=False, dense_hd5=False)
+
+
+def as_plain_txt(path):
+    v = Vectors.from_tsv(path)
+    events_file = path + '.plain.txt'
+    v.to_plain_txt(events_file)
+    return events_file

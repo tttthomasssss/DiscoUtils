@@ -199,13 +199,7 @@ def build_thesaurus_out_of_vectors(vectors_path, out_dir, threads=4, num_neighbo
     entries_file = os.path.join(out_dir, outf_basename + '.entries.filtered.strings')
     features_file = os.path.join(out_dir, outf_basename + '.features.filtered.strings')
 
-    if isinstance(v, DenseVectors):
-        # oh what a hack: DenseVectors do not natively support writing to plaintext (that byblo likes)
-        # so let's pretend it's a Vectors object (replacing the self parameter)
-        Vectors.to_tsv(v, events_file, entries_file, features_file, gzipped=False, dense_hd5=False)
-    else:
-        v.to_tsv(events_file, entries_file, features_file, gzipped=False)
-
+    v.to_plain_txt(events_file, entries_file, features_file)
     # write the byblo conf file
     conf = '--input {} --output {} --threads {} --similarity-min 0.01 -k {} ' \
            '--measure {} --stages allpairs,knn,unenumerate'.format(outf_basename, out_dir, threads,
