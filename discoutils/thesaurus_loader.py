@@ -436,7 +436,6 @@ class Vectors(Thesaurus):
         mat = SparseMatrix(mat)
         return Space(mat, rows, cols)
 
-
     def to_dissect_sparse_files(self, output_prefix, row_transform=None):
         """
         Converting to a dissect sparse matrix format. Writes out 3 files: columns, rows and matrix
@@ -549,8 +548,13 @@ class Vectors(Thesaurus):
         neigh = [(self.selected_row2name[indices[0][i]], distances[0][i]) for i in range(indices.shape[1])]
         if not self.allow_lexical_overlap:
             neigh = self.remove_overlapping_neighbours(entry, neigh)
-        if neigh and neigh[0][0] == entry:  # avoid popping an empty list
-            neigh.pop(0)
+        if neigh:
+            # remove self as neigh, avoid popping an empty list
+            # if there are identical vectors, self might not be the first neighbour- scan a bit further
+            for i in range(min(3, len(neigh))):
+                if neigh[i][0] == entry:
+                    neigh.pop(i)
+                    break
         return neigh[:self.n_neighbours]
 
     @lru_cache(maxsize=2 ** 16)
@@ -658,4 +662,3 @@ class DenseVectors(Vectors):
 
     def to_tsv(self, events_path, **kwargs):
         return super().to_tsv(events_path, dense_hd5=True)
-
