@@ -4,6 +4,7 @@ import logging
 from operator import itemgetter
 import os
 from scipy.sparse import isspmatrix_coo, issparse
+import numpy as np
 import six
 
 __author__ = 'mmb28'
@@ -88,12 +89,33 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
                     outfile.write('%s\t%f\n' % (feature, count))
 
 
-def write_vectors_to_hdf(matrix, row_index:list, column_index:list, events_path):
+def write_vectors_to_hdf(matrix, row_index, column_index, events_path):
     import pandas as pd
 
     logging.info('Writing vectors of shape %r to %s', matrix.shape, events_path)
-    df = pd.DataFrame(matrix.A if issparse(matrix) else matrix,
-                      index=map(str, row_index), columns=map(str, column_index))
+    if isinstance(row_index, dict):
+        # row_index is a dict, let's make it into a list
+        ri = list(range(len(row_index)))  # mega inefficient, but numpy str arrays confuse me
+        for phrase, idx in row_index.items():
+            try:
+                str(phrase).encode('ascii')
+                ri[idx] = str(phrase)
+            except UnicodeEncodeError as e:
+                # pandas doesnt like non-unicode keys in index; mark such phrases for removal
+                ri[idx] = 'THIS_IS_FUCKED_YO_%d' % idx
+    else:
+        ri = row_index
+    old_shape = matrix.shape
+    # remove phrases that arent ascii-only
+    to_keep = np.array([False if x.startswith('THIS_IS_FUCKED_YO_') else True for x in ri])
+    matrix = matrix.A if issparse(matrix) else matrix
+    matrix = matrix[to_keep, :]
+    ri = np.array(ri)[to_keep]
+    logging.info('Removing non-ascii phrases. Matrix shape was %r, is now %r', old_shape, matrix.shape)
+
+    df = pd.DataFrame(matrix, index=ri, columns=map(str, column_index))
+    df[df.columns[:4]].to_html('tmp.html')
+    df[df.columns[:4]].head(7550).tail(50).to_html('tmp_small.html')
     if os.path.exists(events_path):
         # PyTables fails if the file exist, but is not and HDF store. Remove the file
         os.unlink(events_path)
