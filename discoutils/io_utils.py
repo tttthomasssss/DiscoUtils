@@ -104,7 +104,7 @@ def write_vectors_to_hdf(matrix, row_index, column_index, events_path):
                 # pandas doesnt like non-unicode keys in index; mark such phrases for removal
                 ri[idx] = 'THIS_IS_FUCKED_YO_%d' % idx
     else:
-        ri = list(map(str(row_index)))
+        ri = list(map(str, row_index))
     old_shape = matrix.shape
     # remove phrases that arent ascii-only
     to_keep = np.array([False if str(x).startswith('THIS_IS_FUCKED_YO_') else True for x in ri])
