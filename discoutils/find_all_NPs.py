@@ -1,7 +1,6 @@
 import argparse
 import re
 import logging
-from sklearn.feature_extraction.stop_words import ENGLISH_STOP_WORDS
 from discoutils.misc import ContainsEverything
 
 REPORTING_INTERVAL = 5000000
@@ -20,9 +19,6 @@ grammatical_subject_feature_pattern = re.compile("nsubj-DEP:(\S+/N)")  # a verb 
 
 window_feature_pattern = re.compile('(T:\S+)')  # an window feature, as output by FET
 
-STOPWORDS = ['T:{}/'.format(x) for x in ENGLISH_STOP_WORDS] + \
-            ['\' \" ` `` . , ; ! ? \'\' '] + \
-            list(str(num) for num in range(10))  # numbers
 ACCEPTABLE_FEATURE_POS_TAGS = set('/J /N /V /DET /RB /CONJ /PRON'.split())
 
 
@@ -35,9 +31,7 @@ def filter_features(features, *blacklist):
     :return:
     """
     # first remove the stopwords
-    res = [f for f in features if
-           (any(f.endswith(pos) for pos in ACCEPTABLE_FEATURE_POS_TAGS)) and \
-           (not any(f.startswith(stopw) for stopw in STOPWORDS))]
+    res = [f for f in features if any(f.endswith(pos) for pos in ACCEPTABLE_FEATURE_POS_TAGS)]
     # now remove words in the blacklist
     blacklist = {'T:{}'.format(b) for b in blacklist}
     return [f for f in res if f not in blacklist]
