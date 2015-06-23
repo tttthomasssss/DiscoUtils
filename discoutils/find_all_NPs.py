@@ -19,8 +19,6 @@ grammatical_subject_feature_pattern = re.compile("nsubj-DEP:(\S+/N)")  # a verb 
 
 window_feature_pattern = re.compile('(T:\S+)')  # an window feature, as output by FET
 
-ACCEPTABLE_FEATURE_POS_TAGS = set('/J /N /V /DET /RB /CONJ /PRON'.split())
-
 
 def filter_features(features, *blacklist):
     """
@@ -30,11 +28,9 @@ def filter_features(features, *blacklist):
     :param blacklist:
     :return:
     """
-    # first remove the stopwords
-    res = [f for f in features if any(f.endswith(pos) for pos in ACCEPTABLE_FEATURE_POS_TAGS)]
     # now remove words in the blacklist
     blacklist = {'T:{}'.format(b) for b in blacklist}
-    return [f for f in res if f not in blacklist]
+    return [f for f in features if f not in blacklist]
 
 
 def _get_NPs_in_line(line):
