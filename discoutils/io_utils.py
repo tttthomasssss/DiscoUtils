@@ -65,6 +65,8 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
                 accepted_rows.append(row_num)
                 features_and_counts = [(column_index[feat], count) for _, feat, count in column_ids_and_values \
                                        if not -0.0001 < count < 0.0001]  # remove almost zero feature counts
+                if not features_and_counts:
+                    continue
                 s = '%s\t%s\n' % (entry, '\t'.join(map(str, chain.from_iterable(features_and_counts))))
                 outfile.write(s.encode('utf8') if gzipped else s)
                 accepted_entry_counts[entry] = sum(x[1] for x in features_and_counts)

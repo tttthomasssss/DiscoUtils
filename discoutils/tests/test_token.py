@@ -71,7 +71,7 @@ def test_document_feature_from_string():
                            'drop/V_bomb', '/V_/N', 'cat', 'word1_word2//', 'mk8/N_6hp/N',
                            'a./N_gordon/N', 'great/J_c.d./N', 'info@tourmate.com/N', 'w1/N',
                            '-lrb-306-rrb- 569-1995/N', 'mumaharps.com/N', 'c+l+a+v+i+e+r+/N',
-                           'b/N_o\o/N', '%/N', '|/V']:
+                           'b/N_o\o/N', '%/N', '|/V', '-lrb-852-rrb- 2829 6281/N']:
         print(invalid_string)
         assert DocumentFeature('EMPTY', tuple()) == DocumentFeature.from_string(invalid_string)
 
