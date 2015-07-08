@@ -29,7 +29,7 @@ We have one `entry` per row, with its `features` separated by a tab. In the exam
 
 
 
-The input file can also be gzipped or stored in an HDF file. The file type iss determined automatically (the method is helpfully called `from_tsv` for historical reasons)
+The input file can also be gzipped or stored in an HDF file. The file type is determined automatically (the method is helpfully called `from_tsv` for historical reasons). High-dimensional vectors, such as the ones shown above, are best stored in gzipped sparse format. Low-dimensional dense vectors, such as those produced by `word2vec` or by applying SVD to the sparse vectors above are best stored in HDF format.
 
 ## Writing word vectors
 
@@ -53,7 +53,7 @@ We can measure the euclidean distance between any pair of entries:
 
 
 
-We can also search for the nearest neighbours of an entry
+We can also search for the nearest neighbours of an entry. This is implemented using a `BallTree` from `scikit-learn` for dense low-dimensional vectors and with brute-force matrix multiplication for high-dimensional ones. `BallTree` is significantly faster. At the time of writing (8 July 2015) sklearn's approximate nearest neighbour search is slower than `BallTree`. I have been meaning to experiment with [Annoy](https://github.com/spotify/annoy) but I haven't yet.
 
 
     v.init_sims()
@@ -68,7 +68,7 @@ We can also search for the nearest neighbours of an entry
 
 
 
-A slightly more realisting example
+A slightly more realistic example
 
 
     v1 = Vectors.from_tsv('../../FeatureExtractionToolkit/word2vec_vectors/word2vec-wiki-15perc.unigr.strings.rep0')
@@ -111,7 +111,7 @@ A slightly more realisting example
 
 
 # Running external processes
-`DiscoUtils` has a bunch of utility function for running code in a separate process and capturing its output. The majority of these make it easy to run Byblo, but they are all built on top of the same building block:
+`DiscoUtils` has a bunch of utility function for running code in a separate process and capturing its output. The majority of these make it easy to run Byblo, but they are all built on top of the same building blocks:
 
 
     # reconfigure logging module
@@ -126,10 +126,10 @@ A slightly more realisting example
     INFO:root:council/N	pobj-HEAD:of/CONJ	31
     attack/N	pobj-HEAD:in/CONJ	23	pobj-HEAD:of/CONJ	58	amod-DEP:terrorist/J	21
     
-
+More examples coming soon.
 
 # Other bits and pieces
-Less documented or less useful features of `DiscoUtils`
+Obscure and/or poorly documented features of `DiscoUtils`:
  - run Stanford [CoreNLP](http://nlp.stanford.edu/software/corenlp.shtml) on your data in parallel
  - find counting vectors for noun phrases from a corpus (similar to the first example above, but the entries are noun phrases instead of single words)
  
