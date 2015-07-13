@@ -9,6 +9,7 @@ import pytest
 import numpy as np
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 from operator import itemgetter
+from scipy.sparse import issparse
 from discoutils.thesaurus_loader import Thesaurus, Vectors
 from discoutils.collections_utils import walk_nonoverlapping_pairs
 
@@ -75,11 +76,17 @@ def test_nearest_neighbours(vectors_c):
     entries_to_include = ['b/V', 'g/N', 'a/N']
     from sklearn.metrics.pairwise import euclidean_distances
 
-    sims_df = DataFrame(euclidean_distances(vectors_c.matrix), index=vectors_c.row_names, columns=vectors_c.row_names)
+    mat = vectors_c.matrix
+    sims_df = DataFrame(euclidean_distances(mat), index=vectors_c.row_names, columns=vectors_c.row_names)
     print('Cosine sims:\n', sims_df)  # all cosine sim in a readable format
 
-    vec_df = DataFrame(vectors_c.matrix, columns=vectors_c.columns, index=vectors_c.row_names)
+    vec_df = DataFrame(mat.A if issparse(mat) else mat,
+                       columns=vectors_c.columns, index=vectors_c.row_names)
+    assert mat.shape == (5, 5) == (len(vectors_c.row_names), len(vectors_c.columns))
     print('Vectors:\n', vec_df)
+
+    assert len(vectors_c.get_nearest_neighbours('a/N')) == 4 # overlap allowed
+    assert len(vectors_c.get_nearest_neighbours('d/J')) == 4
 
     vectors_c.init_sims(n_neighbors=1)  # insert all entries
     vectors_c.allow_lexical_overlap = True

@@ -229,8 +229,18 @@ class Thesaurus(object):
 
         return mat, self.v.feature_names_, rows
 
-    def __getattr__(self, name):
-        return getattr(self._obj, name)
+
+    def keys(self):
+        return self._obj.keys()
+
+    def values(self):
+        return self._obj.values()
+
+    def items(self):
+        return self._obj.items()
+
+    def __len__(self):
+        return len(self._obj)
 
     def __setstate__(self, d):
         """
@@ -526,8 +536,8 @@ class Vectors(Thesaurus):
         self.nn = NearestNeighbors(algorithm=knn,
                                    metric='l2',
                                    n_neighbors=n_neighbors).fit(X)
-        self.get_nearest_neighbours = self.get_nearest_neighbours_linear if strategy == 'linear' \
-            else self.get_nearest_neighbours_skipping
+        if strategy != 'linear':
+            self.get_nearest_neighbours = self.get_nearest_neighbours_skipping
         self.get_nearest_neighbours.cache_clear()
 
     @lru_cache(maxsize=2 ** 16)
@@ -537,11 +547,11 @@ class Vectors(Thesaurus):
         sorted in order of increasing distance. The top neighbour will never be the entry itself (to match
         Byblo's behaviour)
         """
-        if not hasattr(self, 'nn'):
+        try:
+            self.nn
+        except AttributeError:
             logging.warning('init_sims has not been called. Calling with default settings.')
             self.init_sims()
-        if entry not in self:
-            return None
 
         # if `entry` is contained in the list of neighbours, it will be popped and one less neighbour will be returned
         # so we need to ask for one extra neighbour, but without exceeding the number of available neighbours
@@ -585,6 +595,8 @@ class Vectors(Thesaurus):
             selected_neighbours.add(entry)
             result.append((entry, self.euclidean_distance(original_entry, entry)))
         return result
+
+    get_nearest_neighbours = get_nearest_neighbours_linear
 
     @classmethod
     def from_shelf_readonly(cls, shelf_file_path, **kwargs):
@@ -670,6 +682,9 @@ class DenseVectors(Vectors):
     def to_plain_txt(self, events_path, entries_path='', features_path=''):
         super().to_tsv(events_path, entries_path=entries_path, features_path=features_path,
                        gzipped=False, dense_hd5=False)
+
+    def __str__(self):
+        return '[Dense vectors of shape {}]'.format(self.df.shape)
 
 
 def as_plain_txt(path):

@@ -18,7 +18,7 @@ def resources(thesaurus_c, request):
     entries = list(sorted(thesaurus_c.keys()))
 
     if request.param == 'empty':
-        thesaurus_c.clear()
+        thesaurus_c._obj = dict()
         features, entries = [], []
 
     if request.param == 'with_filter':
