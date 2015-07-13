@@ -86,7 +86,7 @@ def test_application_after_learning_with_selective_write(tmpdir):
         assert mat.shape == (exp_row_len, 2)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture
 def all_cols(thesaurus_c):
     _, cols, _ = thesaurus_c.to_sparse_matrix()
     assert len(cols) == 5
