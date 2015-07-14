@@ -546,12 +546,14 @@ class Vectors(Thesaurus):
         Get the nearest neighbours of `entry` amongst all entries that `init_sims` was called with. Resutls are
         sorted in order of increasing distance. The top neighbour will never be the entry itself (to match
         Byblo's behaviour)
+        If there aren't any neighbours (either because we don't have a vector for the entry or because all
+        neghbours overlap) an empty list is returned
         """
         if not hasattr(self, 'nn'):
             logging.warning('init_sims has not been called. Calling with default settings.')
             self.init_sims()
         if entry not in self:
-            return None
+            return []
 
         # if `entry` is contained in the list of neighbours, it will be popped and one less neighbour will be returned
         # so we need to ask for one extra neighbour, but without exceeding the number of available neighbours

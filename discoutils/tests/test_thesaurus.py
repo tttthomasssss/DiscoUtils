@@ -87,6 +87,7 @@ def test_nearest_neighbours(vectors_c):
 
     assert len(vectors_c.get_nearest_neighbours('a/N')) == 4 # overlap allowed
     assert len(vectors_c.get_nearest_neighbours('d/J')) == 4
+    assert len(vectors_c.get_nearest_neighbours('asdfa')) == 0 # not contained
 
     vectors_c.init_sims(n_neighbors=1)  # insert all entries
     vectors_c.allow_lexical_overlap = True
