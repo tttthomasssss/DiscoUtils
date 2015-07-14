@@ -526,8 +526,8 @@ class Vectors(Thesaurus):
         self.nn = NearestNeighbors(algorithm=knn,
                                    metric='l2',
                                    n_neighbors=n_neighbors).fit(X)
-        self.get_nearest_neighbours = self.get_nearest_neighbours_linear if strategy == 'linear' \
-            else self.get_nearest_neighbours_skipping
+        if strategy != 'linear':
+            self.get_nearest_neighbours = self.get_nearest_neighbours_skipping
         self.get_nearest_neighbours.cache_clear()
 
     @lru_cache(maxsize=2 ** 16)
@@ -585,6 +585,8 @@ class Vectors(Thesaurus):
             selected_neighbours.add(entry)
             result.append((entry, self.euclidean_distance(original_entry, entry)))
         return result
+
+    get_nearest_neighbours = get_nearest_neighbours_linear
 
     @classmethod
     def from_shelf_readonly(cls, shelf_file_path, **kwargs):
@@ -670,6 +672,9 @@ class DenseVectors(Vectors):
     def to_plain_txt(self, events_path, entries_path='', features_path=''):
         super().to_tsv(events_path, entries_path=entries_path, features_path=features_path,
                        gzipped=False, dense_hd5=False)
+
+    def __str__(self):
+        return '[Dense vectors of shape {}]'.format(self.df.shape)
 
 
 def as_plain_txt(path):
