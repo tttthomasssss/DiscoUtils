@@ -229,8 +229,18 @@ class Thesaurus(object):
 
         return mat, self.v.feature_names_, rows
 
-    def __getattr__(self, name):
-        return getattr(self._obj, name)
+
+    def keys(self):
+        return self._obj.keys()
+
+    def values(self):
+        return self._obj.values()
+
+    def items(self):
+        return self._obj.items()
+
+    def __len__(self):
+        return len(self._obj)
 
     def __setstate__(self, d):
         """
