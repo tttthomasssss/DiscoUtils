@@ -367,7 +367,8 @@ class Vectors(Thesaurus):
 
             df = pd.read_hdf(tsv_file, 'matrix')
             logging.info('Found a DF of shape %r in HDF file %s', df.shape, tsv_file)
-            # pytables doesn't like unicode values and replaces them with an emptry string.
+            # pytables doesn't like unicode values and replaces them with an empty string.
+            # pandas doesn't like duplicate values in index
             # remove these, we don't want to work with them anyway
             df = df[df.index != '']
             row_filter_mask = [row_filter(f, DocumentFeature.from_string(f)) for f in df.index]

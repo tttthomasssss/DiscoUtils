@@ -114,7 +114,8 @@ def write_vectors_to_hdf(matrix, row_index, column_index, events_path):
     matrix = matrix.A if issparse(matrix) else matrix
     matrix = matrix[to_keep, :]
     ri = np.array(ri)[to_keep]
-    logging.info('Removing non-ascii phrases. Matrix shape was %r, is now %r', old_shape, matrix.shape)
+    if old_shape != matrix.shape:
+        logging.info('Removing non-ascii phrases. Matrix shape was %r, is now %r', old_shape, matrix.shape)
 
     df = pd.DataFrame(matrix, index=ri, columns=map(str, column_index))
     df[df.columns[:4]].to_html('tmp.html')
