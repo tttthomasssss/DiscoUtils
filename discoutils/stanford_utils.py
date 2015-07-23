@@ -462,7 +462,7 @@ if __name__ == "__main__":
         execute_pipeline(
             dataset,
             path_to_stanford='/Volumes/LocalDataHD/mmb28/Downloads/stanford-corenlp-full-2013-06-20',
-            path_to_depparser='/mnt/lustre/scratch/inf/mmb28/parser_repo_miro',
+            path_to_depparser='/lustre/scratch/inf/mmb28/parser_repo_miro',
             # path_to_liblinear='/Volumes/LocalDataHD/mmb28/NetBeansProjects/liblinear',
             stanford_java_threads=4,
             parsing_python_processes=4,

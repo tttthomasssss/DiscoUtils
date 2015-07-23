@@ -187,7 +187,7 @@ def build_thesaurus_out_of_vectors(vectors_path, out_dir, threads=4, num_neighbo
     """
     from discoutils.thesaurus_loader import Vectors
 
-    BYBLO_BASE_DIR = '/mnt/lustre/scratch/inf/mmb28/FeatureExtractionToolkit/Byblo-2.2.0'
+    BYBLO_BASE_DIR = '/lustre/scratch/inf/mmb28/FeatureExtractionToolkit/Byblo-2.2.0'
     vectors_path = os.path.abspath(vectors_path)
     out_dir = os.path.abspath(out_dir)
     mkdirs_if_not_exists(out_dir)
