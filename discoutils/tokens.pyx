@@ -1,7 +1,5 @@
 from functools import total_ordering
-import logging
-from operator import itemgetter
-from six.moves import zip_longest
+from itertools import zip_longest
 import re
 
 
@@ -15,6 +13,7 @@ class DocumentFeature(object):
         1-GRAM, 2-GRAM, 3-GRAM
         EMPTY- if an attempt to parse an invalid string has been made
     """
+
     def __init__(self, type, tokens):
         """
 
@@ -25,11 +24,9 @@ class DocumentFeature(object):
         self.tokens = tokens
 
     _TYPES = dict([('NVN', 'SVO'), ('JN', 'AN'), ('VN', 'VO'), ('NN', 'NN')])
-    # awful code, duplicated below
     pos_separator = '/'
     ngram_separator = '_'
-    DEFAULT_TOKEN_PATTERN = r'([^{0}{1}0-9\.\+\=\"\?\\\|%012356789]+){0}([a-zA-Z]+)(?:{1}|$)'  # !"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'
-    _TOKEN_RE = re.compile(DEFAULT_TOKEN_PATTERN.format(pos_separator, ngram_separator))
+    BANNED_CHARS = set('*.+="?\|%012356789')
 
     @classmethod
     def recompile_pattern(cls, pos_separator='/', ngram_separator='_'):
@@ -40,7 +37,6 @@ class DocumentFeature(object):
         """
         #  not an underscore + text + underscore or end of line
         #  see re.split documentation on capturing (the first two) and non-capturing groups (the last one)
-        cls._TOKEN_RE = re.compile(cls.DEFAULT_TOKEN_PATTERN.format(pos_separator, ngram_separator))
         cls.pos_separator = pos_separator
         cls.ngram_separator = ngram_separator
 
@@ -48,36 +44,37 @@ class DocumentFeature(object):
     def from_string(cls, string):
         """
         Parses a string and creates a document feature out of it. This is the inverse of
-        this class' tokens_as_str(). Returns an EMPTY feature on exception
+        this class' __str__. Returns an EMPTY feature on exception
         :param string: the string to parse
         :return: DocumentFeature corresponding to the input string or DocumentFeature(type, tuple(tokens))
         """
         if isinstance(string, DocumentFeature):
             return string
-        try:
-            match = cls._TOKEN_RE.split(string, 3)
-            type = ''.join(x.upper() for x in match[2::3])
-            match = iter(match)
-            tokens = []
-            for (junk, word, pos) in zip_longest(match, match, match):
-                if junk:  # Either too many tokens, or invalid token
-                    raise ValueError(junk)
-                if not word:
-                    break
-                tokens.append(Token(word, pos, pos_separator=cls.pos_separator))
-            type = cls._TYPES.get(type,
-                                  ('EMPTY', '1-GRAM', '2-GRAM', '3-GRAM')[len(tokens)])
-            return DocumentFeature(type, tuple(tokens))
-        except Exception as e:
-            # logging.error('Cannot create token out of string %s', string)
-            return DocumentFeature('EMPTY', tuple())
 
-    def tokens_as_str(self):
-        """
-        Represents the features of this document as a human-readable string
-        DocumentFeature('1-GRAM', ('X', 'Y',)) -> 'X_Y'
-        """
-        return self.ngram_separator.join(str(t) for t in self.tokens)
+        try:
+            token_strings = string.split(cls.ngram_separator)
+            tokens = []
+            for t in token_strings:
+                wordpos = t.split(cls.pos_separator)
+                if len(wordpos) == 1:
+                    word, pos = wordpos[0], None
+                elif len(wordpos) == 2:
+                    word, pos = wordpos
+                else:
+                    word, pos = None, None
+                if (not word) or set(word).intersection(cls.BANNED_CHARS):
+                    raise ValueError
+
+                tokens.append(Token(word, pos, pos_separator=cls.pos_separator))
+
+            pos_tags = [t.pos for t in tokens if t.pos]
+            if 0 < len(pos_tags) < len(tokens):
+                raise ValueError
+            pos_sequence = ''.join(t.upper() for t in pos_tags)
+            feat_type = cls._TYPES.get(pos_sequence, ('EMPTY', '1-GRAM', '2-GRAM', '3-GRAM')[len(tokens)])
+            return DocumentFeature(feat_type, tuple(tokens))
+        except Exception as e:
+            return DocumentFeature('EMPTY', tuple())
 
     @classmethod
     def smart_lower(cls, words_with_pos, lowercasing=True):
@@ -139,7 +136,7 @@ class DocumentFeature(object):
         Returns a human-readable representation of this object, including type information, e.g.
             DocumentFeature('1-GRAM', ('X', 'Y',)) -> '1-GRAM:X_Y'
         """
-        return self.tokens_as_str()
+        return self.ngram_separator.join(str(t) for t in self.tokens)
 
     def __repr__(self):
         return 'DF:' + str(self)
@@ -168,6 +165,7 @@ class Token(object):
     neighbours of a given token.
 
     """
+
     def __init__(self, text, pos, index='any', ner='O', pos_separator='/', **kwargs):
         self.text = text
         self.pos = pos

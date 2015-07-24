@@ -3,6 +3,7 @@ from glob import glob
 import shelve
 from unittest import TestCase
 import os
+from discoutils.tokens import DocumentFeature
 from pandas import DataFrame
 
 import pytest
@@ -28,6 +29,8 @@ def thesaurus_c():
 def vectors_c(request, tmpdir):
     kind = request.param  # txt, gz or hdf
     v = Vectors.from_tsv('discoutils/tests/resources/exp0-0c.strings', sim_threshold=0, ngram_separator='_')
+    assert DocumentFeature.from_string('oversized/J') not in v
+    assert len(v) == 5
     return _generate_hdf_gzip_repr(kind, tmpdir, v)
 
 

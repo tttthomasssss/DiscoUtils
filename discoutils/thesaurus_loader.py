@@ -14,10 +14,7 @@ from discoutils.io_utils import write_vectors_to_disk, write_vectors_to_hdf
 from discoutils.misc import is_gzipped, is_hdf
 from sklearn.neighbors import NearestNeighbors
 
-try:
-    from functools import lru_cache
-except ImportError:
-    from functools32 import lru_cache  # py2
+from functools import lru_cache
 
 
 class Thesaurus(object):
@@ -53,7 +50,7 @@ class Thesaurus(object):
         if isinstance(entry, (six.string_types, six.text_type)):
             entry = DocumentFeature.from_string(entry)
         features = [(DocumentFeature.from_string(x[0]), x[1]) for x in to_insert]
-        to_insert = [(f[0].tokens_as_str(), f[1]) for f in features
+        to_insert = [(str(f[0]), f[1]) for f in features
                      if not any(t in entry.tokens for t in f[0].tokens)]
         return to_insert
 
@@ -229,7 +226,6 @@ class Thesaurus(object):
 
         return mat, self.v.feature_names_, rows
 
-
     def keys(self):
         return self._obj.keys()
 
@@ -262,7 +258,7 @@ class Thesaurus(object):
         if self.immutable:
             raise ValueError('This object is immutable')
         if isinstance(key, DocumentFeature):
-            key = DocumentFeature.tokens_as_str(key)
+            key = str(key)
         self._obj[key] = value
 
     def __delitem__(self, key):
@@ -274,7 +270,7 @@ class Thesaurus(object):
         :rtype:
         """
         if isinstance(key, DocumentFeature):
-            item = DocumentFeature.tokens_as_str(key)
+            item = str(key)
 
         del self._obj[key]
         if hasattr(self, 'matrix'):
@@ -284,14 +280,14 @@ class Thesaurus(object):
 
     def __getitem__(self, item):
         if isinstance(item, DocumentFeature):
-            item = DocumentFeature.tokens_as_str(item)
+            item = str(item)
         return self._obj[item]
 
     get_nearest_neighbours = __getitem__
 
     def __contains__(self, item):
         if isinstance(item, DocumentFeature):
-            item = DocumentFeature.tokens_as_str(item)
+            item = str(item)
         return item in self._obj
 
     def __len__(self):
@@ -484,7 +480,7 @@ class Vectors(Thesaurus):
         :rtype: scipy.sparse.csr_matrix, or None
         """
         if isinstance(entry, DocumentFeature):
-            entry = entry.tokens_as_str()
+            entry = str(entry)
         try:
             row = self.name2row[entry]
         except KeyError:
@@ -617,27 +613,6 @@ class Vectors(Thesaurus):
     def __str__(self):
         return '[%d vectors]' % len(self)
 
-        # def __eq__(self, other):
-        # if set(self.row_names) != set(other.row_names):
-        # from collections import Counter
-        #
-        # print('rows do not match')
-        # print(Counter(type(x) for x in self.row_names))
-        # print(Counter(type(x) for x in other.row_names))
-        # print(set(self.row_names) - set(other.row_names))
-        # print(set(other.row_names) - set(self.row_names))
-        #         return False
-        #
-        #     if set(self.columns) != set(other.columns):
-        #         print('cols do not match')
-        #         return False
-        #     for entry in self.keys():
-        #         v1 = self.get_vector(entry)
-        #         v2 = other.get_vector(entry)
-        #         if not np.all(v1 == v2):
-        #             return False
-        #     return True
-
 
 class DenseVectors(Vectors):
     """
@@ -657,12 +632,12 @@ class DenseVectors(Vectors):
 
     def __contains__(self, item):
         if isinstance(item, DocumentFeature):
-            item = DocumentFeature.tokens_as_str(item)
+            item = str(item)
         return item in self.name2row
 
     def get_vector(self, item):
         if isinstance(item, DocumentFeature):
-            item = DocumentFeature.tokens_as_str(item)
+            item = str(item)
         if item not in self.name2row:
             return None
         return csr_matrix(self.df.ix[item].values)  # for compat with Vectors

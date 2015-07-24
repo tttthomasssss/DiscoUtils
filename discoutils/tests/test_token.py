@@ -17,7 +17,7 @@ def test_token_to_string():
     assert 'dog/J' == str(DocumentFeature.from_string('dog/J').tokens[0])
     DocumentFeature.recompile_pattern(pos_separator='-')
     my_feature = DocumentFeature.from_string('dog-J')
-    assert 'dog-J' == my_feature.tokens_as_str()
+    assert 'dog-J' == str(my_feature)
     DocumentFeature.recompile_pattern()
 
 
@@ -70,8 +70,8 @@ def test_document_feature_from_string():
 
     for invalid_string in ['a\/s/N', 'l\/h/N_clinton\/south/N', 'l\/h//N_clinton\/south/N',
                            'l//fasdlj/fasd/dfs/sdf', 'l//fasdlj/fasd/dfs\_/sdf', 'dfs\_/sdf',
-                           'dfs\_/fadslk_/sdf', '/_dfs\_/sdf', '_/_/', '_///f_/', 'drop_bomb',
-                           'drop/V_bomb', '/V_/N', 'cat', 'word1_word2//', 'mk8/N_6hp/N',
+                           'dfs\_/fadslk_/sdf', '/_dfs\_/sdf', '_/_/', '_///f_/',
+                           'drop/V_bomb', '/V_/N', 'word1_word2//', 'mk8/N_6hp/N',
                            'a./N_gordon/N', 'great/J_c.d./N', 'info@tourmate.com/N', 'w1/N',
                            '-lrb-306-rrb- 569-1995/N', 'mumaharps.com/N', 'c+l+a+v+i+e+r+/N',
                            'b/N_o\o/N', '%/N', '|/V', '-lrb-852-rrb- 2829 6281/N']:
