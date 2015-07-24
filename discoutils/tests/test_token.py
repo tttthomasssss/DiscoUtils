@@ -65,6 +65,9 @@ def test_document_feature_from_string():
     assert DocumentFeature('2-GRAM', (Token('very', 'RB'), Token('big', 'J'))) == \
            DocumentFeature.from_string('very/RB_big/J')
 
+    assert DocumentFeature('2-GRAM', (Token('very', None), Token('big', None))) == \
+           DocumentFeature.from_string('very_big')
+
     for invalid_string in ['a\/s/N', 'l\/h/N_clinton\/south/N', 'l\/h//N_clinton\/south/N',
                            'l//fasdlj/fasd/dfs/sdf', 'l//fasdlj/fasd/dfs\_/sdf', 'dfs\_/sdf',
                            'dfs\_/fadslk_/sdf', '/_dfs\_/sdf', '_/_/', '_///f_/', 'drop_bomb',
