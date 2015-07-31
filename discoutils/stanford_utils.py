@@ -150,24 +150,18 @@ def _process_single_xml_to_conll(path_to_file):
     """
     Convert a single file from XML to CoNLL style.
     """
+    logging.info('Formatting %s to CONLL', path_to_file)
     with open(path_to_file + ".conll", 'w') as outfile:
         #Create iterator over XML elements, don't store whole tree
-        xmltree = ET.iterparse(path_to_file, events=("end",))
-        for _, element in xmltree:
-            if element.tag == "sentence":  #If we've read an entire sentence
-                i = 1
-                #Output CoNLL style
-                for word, lemma, pos, ner in zip(element.findall(".//word"),
-                                                 element.findall(".//lemma"),
-                                                 element.findall(".//POS"),
-                                                 element.findall(".//NER")):
-                    outfile.write("%s\t%s\t%s\t%s\t%s\n" % (
-                        i, word.text.encode('utf8'), lemma.text.encode('utf8'),
-                        pos.text, ner.text))
-                    i += 1
+        xmltree = ET.parse(path_to_file)
+        for element in xmltree.findall('.//token'):
+            if int(element.get('id')) ==1:
                 outfile.write("\n")
-                #Clear this section of the XML tree
-                element.clear()
+            lemma = element.find('lemma').text
+            word = element.find('word').text
+            pos = element.find('POS').text.upper()
+            outfile.write("%s\t%s\t%s\t%s\n" % (
+                element.get('id'), word, lemma, pos))
 
 
 ####################
@@ -452,19 +446,20 @@ if __name__ == "__main__":
     # run = set("formatting parsing cleanup".split())
     # run = set("formatting".split())
     # run = set("parsing".split())
-    run = set("stanford".split())
+    run = set("formatting".split())
 
     #Fill arguments below, for example:
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s\t%(module)s.%(funcName)s (line %(lineno)d)\t%(levelname)s : %(message)s")
 
-    for dataset in glob('/Volumes/LocalDataHD/mmb28/Downloads/techtc100-clean/Exp*'):
+    for dataset in ['/home/m/mm/mmb28/NetBeansProjects/FeatureExtractionToolkit/data/cwiki']:
         execute_pipeline(
             dataset,
-            path_to_stanford='/Volumes/LocalDataHD/mmb28/Downloads/stanford-corenlp-full-2013-06-20',
+            path_to_stanford='/home/m/mm/mmb28/Downloads/stanford-corenlp-full-2015-04-20',
             path_to_depparser='/lustre/scratch/inf/mmb28/parser_repo_miro',
             # path_to_liblinear='/Volumes/LocalDataHD/mmb28/NetBeansProjects/liblinear',
             stanford_java_threads=4,
             parsing_python_processes=4,
+            formatting_python_processes=3,
             run=run)
 
