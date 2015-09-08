@@ -94,7 +94,7 @@ def run_stanford_pipeline(data_dir, stanford_dir, java_threads=2,
                         # '-file', input_sub_dir, '-outputDirectory', output_sub_dir,
                         '-filelist', filelist, '-outputDirectory',
                         output_sub_dir,
-                        '-threads', str(java_threads), '-outputFormat', 'xml',
+                        '-threads', str(java_threads), '-outputFormat', 'conll',
                         '-outputExtension', '.tagged', '-parse.maxlen', '50']
 
         logging.info("Running: \n" + str(stanford_cmd))
@@ -108,67 +108,6 @@ def run_stanford_pipeline(data_dir, stanford_dir, java_threads=2,
     logging.info("<%s> All stanford complete." % current_time())
 
     return output_dir
-
-
-##################
-#
-#  Formatting to CoNLL from XML format
-#
-##################
-def process_corpora_from_xml(path_to_corpora, processes=1):
-    """
-    Given a directory of corpora, where each corpus is a
-    directory of xml files produced by stanford_pipeline,
-    convert text to CoNLL-style formatting:
-        ID    FORM    LEMMA    POS
-    Jobs are run in parallel.
-    """
-    logging.info("<%s> Starting XML conversion..." % current_time())
-    for data_sub_dir in os.listdir(path_to_corpora):
-        _process_xml_to_conll(os.path.join(path_to_corpora, data_sub_dir),
-                              processes)
-
-
-def _process_xml_to_conll(path_to_data, processes=1):
-    """
-    Given a directory of XML documents from stanford's output,
-    convert them to CoNLL style sentences. Jobs run in parallel.
-    """
-    logging.info("<%s> Beginning formatting to CoNLL: %s" % (
-        current_time(), path_to_data))
-    # jobs = {}
-    Parallel(n_jobs=processes)(delayed(_process_single_xml_to_conll)(
-        os.path.join(path_to_data, data_file))
-                               for data_file in os.listdir(path_to_data)
-                               if not (data_file.startswith(".") or
-                                       data_file.endswith(".conll")))
-
-    logging.info("<%s> All formatting complete." % current_time())
-
-
-def _process_single_xml_to_conll(path_to_file):
-    """
-    Convert a single file from XML to CoNLL style.
-    """
-    with open(path_to_file + ".conll", 'w') as outfile:
-        #Create iterator over XML elements, don't store whole tree
-        xmltree = ET.iterparse(path_to_file, events=("end",))
-        for _, element in xmltree:
-            if element.tag == "sentence":  #If we've read an entire sentence
-                i = 1
-                #Output CoNLL style
-                for word, lemma, pos, ner in zip(element.findall(".//word"),
-                                                 element.findall(".//lemma"),
-                                                 element.findall(".//POS"),
-                                                 element.findall(".//NER")):
-                    outfile.write("%s\t%s\t%s\t%s\t%s\n" % (
-                        i, word.text.encode('utf8'), lemma.text.encode('utf8'),
-                        pos.text, ner.text))
-                    i += 1
-                outfile.write("\n")
-                #Clear this section of the XML tree
-                element.clear()
-
 
 ####################
 #
@@ -458,13 +397,13 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s\t%(module)s.%(funcName)s (line %(lineno)d)\t%(levelname)s : %(message)s")
 
-    for dataset in glob('/Volumes/LocalDataHD/mmb28/Downloads/techtc100-clean/Exp*'):
-        execute_pipeline(
-            dataset,
-            path_to_stanford='/Volumes/LocalDataHD/mmb28/Downloads/stanford-corenlp-full-2013-06-20',
-            path_to_depparser='/mnt/lustre/scratch/inf/mmb28/parser_repo_miro',
-            # path_to_liblinear='/Volumes/LocalDataHD/mmb28/NetBeansProjects/liblinear',
-            stanford_java_threads=4,
-            parsing_python_processes=4,
-            run=run)
+    dataset = '/Volumes/LocalDataHD/thk22/DevSandbox/InfiniteSandbox/_datasets/cat_test'
+    execute_pipeline(
+        dataset,
+        path_to_stanford='/Volumes/LocalDataHD/thk22/DevSandbox/InfiniteSandbox/stanford-corenlp-full-2015-04-20',
+        #path_to_depparser='/mnt/lustre/scratch/inf/mmb28/parser_repo_miro',
+        # path_to_liblinear='/Volumes/LocalDataHD/mmb28/NetBeansProjects/liblinear',
+        stanford_java_threads=4,
+        #parsing_python_processes=4,
+        run=run)
 
