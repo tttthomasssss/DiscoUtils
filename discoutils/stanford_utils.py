@@ -87,10 +87,8 @@ def run_stanford_pipeline(data_dir, stanford_dir, java_threads=2,
     return output_dir
 
 
-def execute_pipeline(path_to_corpora,  # Required for all
-                     path_to_stanford,
-                     path_to_filelistdir="",  # optional
-                     java_threads=40):
+def execute_pipeline(path_to_corpora, path_to_stanford,
+                     path_to_filelistdir="", java_threads=40):
     if not path_to_stanford:
         raise ValueError("Specify path to stanford")
     run_stanford_pipeline(path_to_corpora, path_to_stanford,
@@ -120,16 +118,13 @@ if __name__ == "__main__":
 
 
     ---- Execution ----
-
     This section explains how to run stanford_utils.py
 
         - Expected Input
-
             The pipeline expects input data in the following structure:
                 - A directory containing corpora, where
                 - Each corpus is a directory of files, where
                 - Each file contains raw text.
-
         - Output
 
             After running the full pipeline on a directory called "corpora"
@@ -147,51 +142,15 @@ if __name__ == "__main__":
                 - A directory called "corpora-tagged-parsed" which adds the
                   annotations of AR's dependency parser to the data.
 
-        - Invokation using "execute_pipeline" function
-
-            This function allows you to run all or individual parts of the pipeline.
-
-            Currently, you should call the function with the appropriate parameters
-            by writing the arguments in a call to the function at the bottom of the
-            script.
-
-            Perhaps a config script parser would make things better...
-
-            It requires the following arguments (some are optional with defaults):
-
-            - run
-                A sequence or collection of strings which specify which parts of the
-                pipeline to run. There are 4 options:
-
-                stanford   : run the stanford pipeline
-                formatting : convert stanford XML output to CoNLL
-                parsing    : dependency parse CoNLL format text
-                cleanup    : delete stanford XML files
-
-            - path_to_corpora
-                This is the full path to the directory containing your corpora.
+        - Invocation using "execute_pipeline" function. The the following arguments are required:
 
             - path_to_stanford
                 This is the full path to the directory containing Stanford CoreNLP
 
-            - path_to_filelistdir
-                Before running Stanford, a list of files to be processed is created
-                and saved to disk, to be passed as an argument to stanford. This
-                is the path to the DIRECTORY where this file should be saved (1 per
-                corpus)
-
-                DEFAULT: The stanford corenlp directory
-
             - stanford_java_threads
                 The number of threads to be used when running stanford corenlp
 
-                DEFAULT: 40
-
-            - formatting_python_processes
-                The number of python processes to run in parallel when
-                converting XML to CoNLL.
-
-                DEFAULT: 40
+                DEFAULT: 2
     """
 
     # Pipeline examples:
