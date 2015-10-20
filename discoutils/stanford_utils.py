@@ -1,4 +1,5 @@
 # coding=utf-8
+import argparse
 import logging
 import os
 import subprocess
@@ -157,6 +158,11 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s\t%(module)s.%(funcName)s (line %(lineno)d)\t%(levelname)s : %(message)s")
 
-    dataset_path = '/home/m/mm/mmb28/NetBeansProjects/dc_evaluation/data/web'
-    stanford_path = '/home/m/mm/mmb28/Downloads/stanford-corenlp-full-2015-04-20'
-    execute_pipeline(dataset_path, stanford_path, java_threads=4)
+    parser = argparse.ArgumentParser(description='Process labelled data set with Stanford CoreNLP toolkit')
+    parser.add_argument('--data', help='Path to labelled data directory')
+    parser.add_argument('--stanford', help='Path to Stanford toolkit. Must include corenlp.sh')
+    parser.add_argument('--threads', help='Path to Stanford toolkit. Must include corenlp.sh',
+                        type=int, default=2)
+
+    args = parser.parse_args()
+    execute_pipeline(os.path.abspath(args.data), os.path.abspath(args.stanford), java_threads=args.threads)
