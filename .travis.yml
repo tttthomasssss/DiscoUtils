@@ -4,7 +4,9 @@ language: python
 python:
   - "3.4"
 
-sudo: required
+git:
+  depth: 250
+  
 dist: trusty
 
 addons:
