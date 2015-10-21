@@ -19,9 +19,6 @@ virtualenv:
   system_site_packages: true
 
 install:
-  - deactivate
-  - virtualenv --system-site-packages testenv
-  - source testenv/bin/activate
   - pip install -U pytest Cython iterpipes3 scikit-learn joblib python-magic
   - python setup.py install
 
