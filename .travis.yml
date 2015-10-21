@@ -22,7 +22,7 @@ install:
   - deactivate		
   - virtualenv --system-site-packages testenv		
   - source testenv/bin/activate
-  - pip install -U pytest Cython iterpipes3 scikit-learn joblib python-magic
+  - pip install -U pytest Cython iterpipes3 scikit-learn joblib python-magic --user
   - python setup.py install
 
 script:
