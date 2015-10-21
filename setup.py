@@ -23,7 +23,7 @@ setup(
     tests_require=['pytest>=2.4.2'],
     cmdclass={'test': PyTest},
     install_requires=['pytest', 'Cython', 'iterpipes3', 'numpy', 'scipy',
-                      'scikit-learn', 'joblib', 'python-magic'],
+                      'scikit-learn', 'joblib', 'python-magic', 'pandas'],
     ext_modules=cythonize(["discoutils/tokens.pyx",
                            # "discoutils/thesaurus_loader.pyx",
                            ])
