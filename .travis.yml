@@ -21,6 +21,7 @@ install:
   - virtualenv --system-site-packages testenv
   - source testenv/bin/activate
   - pip install -U pytest Cython iterpipes3 scikit-learn joblib python-magic
+  - python setup.py install
 
 script:
   - py.test discoutils/tests
