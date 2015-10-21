@@ -23,6 +23,7 @@ install:
   - deactivate		
   - virtualenv --system-site-packages testenv		
   - source testenv/bin/activate
+  - easy_install --upgrade pip
   - pip install -U pytest Cython iterpipes3 joblib python-magic --user
   - python setup.py install
 
