@@ -13,7 +13,7 @@ install:
   - conda config --set always_yes yes --set changeps1 no
   - conda update -q conda
   - conda info -a
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION pip numpy scipy scikit-learn pandas cython joblib pytest
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION pip numpy scipy scikit-learn pandas pytables cython joblib pytest
   - pip install -U iterpipes3 python-magic
   - source activate test-environment
   - python setup.py build_ext --inplace
