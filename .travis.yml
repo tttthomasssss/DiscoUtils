@@ -14,6 +14,7 @@ addons:
     packages:
       - python3-numpy
       - python3-scipy
+      - python3-sklearn
 
 virtualenv:
   system_site_packages: true
@@ -22,7 +23,7 @@ install:
   - deactivate		
   - virtualenv --system-site-packages testenv		
   - source testenv/bin/activate
-  - pip install -U pytest Cython iterpipes3 scikit-learn joblib python-magic --user
+  - pip install -U pytest Cython iterpipes3 joblib python-magic --user
   - python setup.py install
 
 script:
