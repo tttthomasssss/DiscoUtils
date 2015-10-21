@@ -1,7 +1,6 @@
 # based on https://github.com/larsmans/seqlearn/blob/b85c56e3b785745683ea2a6d0907d89405a6b975/.travis.yml
 
-sudo: required
-dist: trusty #http://blog.travis-ci.com/2015-10-14-opening-up-ubuntu-trusty-beta/
+sudo: false
 
 language: python
 python: # https://github.com/travis-ci/travis-ci/issues/2219#issuecomment-41804942
