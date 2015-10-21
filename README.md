@@ -1,4 +1,6 @@
 # DiscoUtils
+[![Build Status](https://travis-ci.org/mbatchkarov/DiscoUtils.svg?branch=master)](https://travis-ci.org/mbatchkarov/DiscoUtils)
+[![Coverage Status](https://coveralls.io/repos/mbatchkarov/DiscoUtils/badge.svg?branch=master&service=github)](https://coveralls.io/github/mbatchkarov/DiscoUtils?branch=master)
 
 A small collection of tools for DIStributional COmpositional semantics. I use this in my doctoral work, releasing it here in the hope that it might save somebody a bit of work. The API is inconsistent at times and the documentation may be outdated, but test coverage is decent and all tests pass.
 

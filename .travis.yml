@@ -1,4 +1,5 @@
 # based on https://github.com/larsmans/seqlearn/blob/b85c56e3b785745683ea2a6d0907d89405a6b975/.travis.yml
+sudo: false
 language: python
 python:
   - "3.4"
