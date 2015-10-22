@@ -41,7 +41,7 @@ def resources(thesaurus_c, request):
 def test_write_vectors_to_disk(resources, tmpdir):
     """
     Checks the entries/features files, the events file is checked by
-    thesisgenerator.tests.test_thesaurus.test_to_file
+    tests.test_thesaurus.test_to_file
 
     :type th: Thesaurus
     """

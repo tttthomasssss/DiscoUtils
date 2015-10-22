@@ -20,7 +20,7 @@ def write_vectors_to_disk(matrix, row_index, column_index, vectors_path, feature
     :type matrix: scipy.sparse.coo_matrix
     :param row_index: a collection of DocumentFeature-s representing entry names. `row_index[N]` should return the
      feature whose vector is stored in row N of `matrix`
-    :type row_index: thesisgenerator.plugins.tokenizer.DocumentFeature
+    :type row_index: discoutils.tokens.DocumentFeature
     :param column_index: sorted list of feature names
     :param features_path: str, where to write the Byblo features file. If the entry_filter removes all entries
     this file will not be written, i.e. the file will not be created at all if there's nothing to put in it
