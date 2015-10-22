@@ -118,8 +118,6 @@ def write_vectors_to_hdf(matrix, row_index, column_index, events_path):
         logging.info('Removing non-ascii phrases. Matrix shape was %r, is now %r', old_shape, matrix.shape)
 
     df = pd.DataFrame(matrix, index=ri, columns=map(str, column_index))
-    df[df.columns[:4]].to_html('tmp.html')
-    df[df.columns[:4]].head(7550).tail(50).to_html('tmp_small.html')
     if os.path.exists(events_path):
         # PyTables fails if the file exist, but is not and HDF store. Remove the file
         os.unlink(events_path)
