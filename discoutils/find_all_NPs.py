@@ -22,10 +22,9 @@ window_feature_pattern = re.compile('(T:\S+)')  # an window feature, as output b
 
 def filter_features(features, *blacklist):
     """
-    Removes stopword window features as well as ones mentioned in a list. Can be used to remove
-    itself from features of phrases, e.g. black/J_cat/N might have T:black/J as a feature, which we
-    do not want
-    :param blacklist:
+    Removes window features mentioned in a list. Can be used to remove itself from features of phrases,
+    e.g. black/J_cat/N might have T:black/J as a feature, which we do not want
+    :param blacklist: unacceptable tokens.
     :return:
     """
     # now remove words in the blacklist

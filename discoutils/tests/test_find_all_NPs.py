@@ -84,7 +84,7 @@ def test_find_all_VPs_with_window_vectors():
     expected_features = set(['T:ordinary/J', 'T:council/N', 'T:session/N', 'T:preserve/V', 'T:include/V',
                              'T:building/N', 'T:builder/N',
                              # 'T:strabag/N', 'T:declare/V', 'T:site/N', # these are there but are part of the phrase
-                             'T:life/N', 'T:source/N', 'T:mourning/N', 'T:state/N'])
+                             'T:life/N', 'T:source/N', 'T:mourning/N', 'T:state/N', "T:''/UNK",'T:``/UNK'])
     lines = s.getvalue().rstrip().split('\n')
     for l in lines:
         print(l)
