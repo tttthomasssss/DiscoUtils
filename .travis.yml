@@ -19,10 +19,10 @@ install:
   - pip install git+git://github.com/mbatchkarov/dissect.git@master
   - pip install coveralls
   - python setup.py build_ext --inplace
-  - python setup.py install
+  - python setup.py develop
 
 script:
-  - coverage run --source=discoutils setup.py test
+  - coverage run --source=discoutils runtests.py
 
 after_success:
   coveralls
