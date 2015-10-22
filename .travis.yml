@@ -17,11 +17,15 @@ install:
   - pip install -U iterpipes3 python-magic
   - source activate test-environment
   - pip install git+git://github.com/mbatchkarov/dissect.git@master
+  - pip install coveralls
   - python setup.py build_ext --inplace
   - python setup.py install
 
 script:
-  - py.test discoutils/tests
+  - coverage run --source=discoutils setup.py test
 
+after_success:
+  coveralls
+  
 notifications:
   email: false
