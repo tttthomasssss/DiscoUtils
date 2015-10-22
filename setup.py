@@ -1,18 +1,23 @@
 # -*- coding: utf-8 -*-
-from setuptools import setup
-from setuptools.command.test import test as TestCommand
+from setuptools import setup, Command
 from Cython.Build import cythonize
-import pytest
 
+# https://pytest.org/latest/goodpractises.html#integrating-with-setuptools-python-setup-py-test
+class PyTest(Command):
+    user_options = []
 
-class PyTest(TestCommand):
+    def initialize_options(self):
+        pass
+
     def finalize_options(self):
-        TestCommand.finalize_options(self)
-        self.test_args = 'discoutils/tests'
-        self.test_suite = True
+        pass
 
-    def run_tests(self):
-        pytest.main(self.test_args)
+    def run(self):
+        import subprocess
+        import sys
+        errno = subprocess.call([sys.executable, 'runtests.py'])
+        raise SystemExit(errno)
+
 
 setup(
     name='DiscoUtils',
@@ -24,8 +29,5 @@ setup(
     cmdclass={'test': PyTest},
     install_requires=['pytest', 'Cython', 'iterpipes3', 'numpy', 'scipy',
                       'scikit-learn', 'joblib', 'python-magic', 'pandas'],
-    ext_modules=cythonize(["discoutils/tokens.pyx",
-                           # "discoutils/thesaurus_loader.pyx",
-                           ])
+    ext_modules=cythonize(["discoutils/tokens.pyx"])
 )
-
