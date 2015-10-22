@@ -16,6 +16,7 @@ install:
   - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION pip numpy scipy scikit-learn pandas pytables cython joblib pytest
   - pip install -U iterpipes3 python-magic
   - source activate test-environment
+  - pip install git+git://github.com/mbatchkarov/dissect.git@master
   - python setup.py build_ext --inplace
   - python setup.py install
 
