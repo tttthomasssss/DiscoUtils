@@ -62,6 +62,19 @@ def temp_chdir(path):
     finally:
         os.chdir(starting_directory)
 
+def force_symlink(existing_file, link_name):
+    """
+    Created a symlink. If `link_name` exists it is deleted first. Take care!
+    :raise e:
+    """
+    try:
+        os.symlink(existing_file, link_name)
+    except OSError as e:
+        if e.errno == errno.EEXIST:
+            os.remove(link_name)
+            os.symlink(existing_file, link_name)
+        else:
+            raise e
 
 def mkdirs_if_not_exists(dir):
     """
