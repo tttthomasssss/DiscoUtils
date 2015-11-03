@@ -19,10 +19,10 @@ except ImportError:
     import pickle
 
 
-def filter_out_infrequent_entries(desired_counts_per_feature_type, thesaurus):
+def filter_out_infrequent_entries(desired_counts_per_feature_type, vectors):
     logging.info('Converting thesaurus to sparse matrix')
-    mat, cols, rows = thesaurus.to_sparse_matrix()
-    logging.info('Loaded a data matrix of shape %r', mat.shape)
+    mat, cols, rows = vectors.to_sparse_matrix()
+    logging.info('Got a data matrix of shape %r', mat.shape)
     # convert to document feature for access to PoS tag
     document_features = [DocumentFeature.from_string(r) for r in rows]
     # don't want to do dimensionality reduction on composed vectors
@@ -34,25 +34,25 @@ def filter_out_infrequent_entries(desired_counts_per_feature_type, thesaurus):
     # as measured by sum of feature counts. This is Byblo's definition of frequency (which is in fact a marginal),
     # but it is strongly correlated with one normally thinks of as entry frequency
     desired_rows = []
-    for desired_pos, desired_count in desired_counts_per_feature_type:
-        row_of_current_pos = pos_tags == desired_pos  # what rows are the right PoS tags at, boolean mask array
-        # indices of the array sorted by row sum, and where the pos == desired_pos
-        if desired_count > 0:
-            sorted_idx_by_sum = np.ravel(mat.sum(1)).argsort()
-            row_of_current_pos = row_of_current_pos[sorted_idx_by_sum]
-            sorted_idx_and_pos_matching = sorted_idx_by_sum[row_of_current_pos]
-            # slice off the top desired_count and store them
-            desired_rows.extend(list(sorted_idx_and_pos_matching[-desired_count:]))
-        else:
-            # do not include
-            pass
+    if desired_counts_per_feature_type is not None:
+        for desired_pos, desired_count in desired_counts_per_feature_type:
+            row_of_current_pos = pos_tags == desired_pos  # what rows are the right PoS tags at, boolean mask array
+            # indices of the array sorted by row sum, and where the pos == desired_pos
+            if desired_count > 0:
+                sorted_idx_by_sum = np.ravel(mat.sum(1)).argsort()
+                row_of_current_pos = row_of_current_pos[sorted_idx_by_sum]
+                sorted_idx_and_pos_matching = sorted_idx_by_sum[row_of_current_pos]
+                # slice off the top desired_count and store them
+                desired_rows.extend(list(sorted_idx_and_pos_matching[-desired_count:]))
+            else:
+                # do not include
+                pass
 
-        logging.info('Frequency filter keeping %d/%d %s entries ', desired_count,
-                     sum(row_of_current_pos), desired_pos)
-    desired_rows = sorted(desired_rows)
-    # check that the pos tag of each selected entry is what we think it is
-    # for k, v in pos_to_rows.items():
-    # assert all(k == x for x in pos_tags[v])
+            logging.info('Frequency filter keeping %d/%d %s entries ', desired_count,
+                         sum(row_of_current_pos), desired_pos)
+    else:
+        logging.info('Not filtering any of the entries')
+        desired_rows = range(len(vectors))
 
     # remove the vectors for infrequent entries, update list of pos tags too
     mat = mat[desired_rows, :]
@@ -82,13 +82,11 @@ def _do_svd_single(mat, n_components):
                                                                                    mat.shape,
                                                                                    reduced_mat.shape,
                                                                                    end - start))
-    return method, reduced_mat
+    return reduced_mat
 
 
-def _write_to_disk(reduced_mat, method, prefix, rows, use_hdf=True):
-    features_file = prefix + '.features.filtered.strings'
+def _write_to_disk(reduced_mat, prefix, rows, use_hdf=True):
     events_file = prefix + '.events.filtered.strings'
-    entries_file = prefix + '.entries.filtered.strings'
     if use_hdf:
         write_vectors_to_hdf(reduced_mat, rows,
                              ['SVD:feat{0:03d}'.format(i) for i in range(reduced_mat.shape[1])],
@@ -112,12 +110,12 @@ def do_svd(input_path, output_prefix,
     Performs truncated SVD. A copy of the trained sklearn SVD estimator will be also be saved
 
     :param input_path: list of files containing vectors in TSV format. All vectors will be reduced together.
-    :type input_path: list
+    :type input_path: list of file names or a Vectors object
     :param output_prefix: Where to output the reduced files. An extension will be added.
     :param desired_counts_per_feature_type: how many entries to keep of each DocumentFeature type, by frequency. This
      is the PoS tag for unigram features and the feature type otherwise. For instance, pass in [('N', 2), ('AN', 0)] to
     select 2 unigrams of PoS N and 0 bigrams of type adjective-noun. Types that are not explicitly given a positive
-    desired count are treated as if the desired count is 0.
+    desired count are treated as if the desired count is 0. If this is None, not filtering is performed.
     :param reduce_to: list of integers, what dimensionalities to reduce to
     :param apply_to: a file path. After SVD has been trained on input_path, it can be applied to
     apply_to. Output will be writen to the same file
@@ -132,10 +130,14 @@ def do_svd(input_path, output_prefix,
     if not 1 <= write <= 3:
         raise ValueError('value of parameter write must be 1, 2 or 3')
 
-    thesaurus = Vectors.from_tsv(input_path, lowercasing=False)
+    if not isinstance(input_path, Vectors):
+        thesaurus = Vectors.from_tsv(input_path, lowercasing=False)
+    else:
+        thesaurus = input_path
+
     if not thesaurus:
         raise ValueError('Empty thesaurus %r', input_path)
-    mat, pos_tags, rows, cols = filter_out_infrequent_entries(desired_counts_per_feature_type, thesaurus)
+    mat, _, rows, cols = filter_out_infrequent_entries(desired_counts_per_feature_type, thesaurus)
     if apply_to:
         cols = set(cols)
         thes_to_apply_to = Vectors.from_tsv(apply_to, lowercasing=False,
@@ -170,7 +172,7 @@ def do_svd(input_path, output_prefix,
                 reduced_mat = method.transform(extra_matrix)
 
         path = '{}-SVD{}'.format(output_prefix, n_components)
-        _write_to_disk(scipy.sparse.coo_matrix(reduced_mat), method, path, rows, use_hdf=use_hdf)
+        _write_to_disk(scipy.sparse.coo_matrix(reduced_mat), path, rows, use_hdf=use_hdf)
 
 
 if __name__ == '__main__':
