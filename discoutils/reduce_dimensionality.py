@@ -82,7 +82,7 @@ def _do_svd_single(mat, n_components):
                                                                                    mat.shape,
                                                                                    reduced_mat.shape,
                                                                                    end - start))
-    return reduced_mat
+    return method, reduced_mat
 
 
 def _write_to_disk(reduced_mat, prefix, rows, use_hdf=True):
