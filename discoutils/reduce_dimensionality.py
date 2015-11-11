@@ -140,8 +140,11 @@ def do_svd(input_path, output_prefix,
     mat, _, rows, cols = filter_out_infrequent_entries(desired_counts_per_feature_type, thesaurus)
     if apply_to:
         cols = set(cols)
-        thes_to_apply_to = Vectors.from_tsv(apply_to, lowercasing=False,
-                                            column_filter=lambda foo: foo in cols)
+        if not isinstance(apply_to, Vectors):
+            thes_to_apply_to = Vectors.from_tsv(apply_to, lowercasing=False,
+                                                column_filter=lambda foo: foo in cols)
+        else:
+            thes_to_apply_to = apply_to
         # get the names of each thesaurus entry
         extra_rows = [x for x in thes_to_apply_to.keys()]
         # vectorize second matrix with the vocabulary (columns) of the first thesaurus to ensure shapes match
