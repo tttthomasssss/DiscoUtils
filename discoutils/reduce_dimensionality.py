@@ -1,3 +1,4 @@
+from collections import Counter
 import sys
 
 sys.path.append('.')
@@ -27,7 +28,7 @@ def filter_out_infrequent_entries(desired_counts_per_feature_type, vectors):
     document_features = [DocumentFeature.from_string(r) for r in rows]
     # don't want to do dimensionality reduction on composed vectors
     feature_types = [sorted_idx_and_pos_matching.type for sorted_idx_and_pos_matching in document_features]
-    assert all(x == '1-GRAM' or x == 'AN' or x == 'NN' for x in feature_types)
+    assert all(x == '1-GRAM' or x == 'AN' or x == 'NN' for x in feature_types), Counter(feature_types)
     # get the PoS tags of each row in the matrix
     pos_tags = np.array([df.tokens[0].pos if df.type == '1-GRAM' else df.type for df in document_features])
     # find the rows of the matrix that correspond to the most frequent nouns, verbs, ...,
@@ -55,16 +56,21 @@ def filter_out_infrequent_entries(desired_counts_per_feature_type, vectors):
         desired_rows = range(len(vectors))
 
     # remove the vectors for infrequent entries, update list of pos tags too
-    mat = mat[desired_rows, :]
-    rows = itemgetter(*desired_rows)(document_features)
-    pos_tags = pos_tags[desired_rows]
-    # removing rows may empty some columns, remove these as well. This is probably not very like to occur as we have
-    # already filtered out infrequent features, so the column count will stay roughly the same
-    desired_cols = np.ravel(mat.sum(0)) > 0
-    mat = mat[:, desired_cols]
-    col_indices = list(np.where(desired_cols)[0])
-    cols = itemgetter(*col_indices)(cols)
+    if desired_counts_per_feature_type is not None:
+        # if some rows have been removed update respective data structures
+        mat = mat[desired_rows, :]
+        rows = itemgetter(*desired_rows)(document_features)
+        pos_tags = pos_tags[desired_rows]
+
+        # removing rows may empty some columns, remove these as well. This is probably not very like to occur as we have
+        # already filtered out infrequent features, so the column count will stay roughly the same
+        desired_cols = np.ravel(mat.sum(0)) > 0
+        mat = mat[:, desired_cols]
+        col_indices = list(np.where(desired_cols)[0])
+        cols = itemgetter(*col_indices)(cols)
+
     logging.info('Selected only the most frequent entries, matrix size is now %r', mat.shape)
+    assert mat.shape == (len(rows), len(cols))
     return mat, pos_tags, rows, cols
 
 
