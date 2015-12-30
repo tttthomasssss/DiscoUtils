@@ -2,7 +2,7 @@ __author__ = 'thk22'
 import numpy as np
 
 
-def _create_template(pos_tags, ner_tags, b):
+def _create_template(b):
 	# Possibly involves some overhead but its fun and I don't want to clutter this beautiful function with if statements
 	s = np.array(['{}', '\t{}', '\\{}', '\\{}', '\t{}', '\t{}'])
 
@@ -13,7 +13,7 @@ def convert_stanford_conll_to_apt_conll(in_path, out_path, lowercase=True, inclu
 	# Lol! \m/o_O\m/
 	b_template = np.array([True, True, include_pos_tags, include_ner_tags, True, True])
 	b_context = np.array([True, True, False, include_pos_tags, include_ner_tags, True, True])
-	template = _create_template(include_pos_tags, include_ner_tags, b_template)
+	template = _create_template(b_template)
 
 	with open(in_path, 'rb') as in_file, open(out_path, 'wb') as out_file:
 		for line in in_file:

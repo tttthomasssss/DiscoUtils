@@ -352,6 +352,10 @@ def test_loading_unordered_feature_lists(tmpdir):
         assert_array_equal(v.get_vector(word).A, v.get_vector(word).A)
 
 
+def test_loading_apt_feature_dict():
+    pass # TODO!!!
+
+
 def test_to_dissect_sparse_files(vectors_c, tmpdir):
     """
 

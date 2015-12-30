@@ -8,6 +8,7 @@ import shelve
 import dill
 import numpy as np
 import six
+from scipy.spatial.distance import cosine
 from scipy.spatial.distance import euclidean
 from scipy.sparse import csr_matrix, issparse, coo_matrix
 from discoutils.tokens import DocumentFeature
@@ -308,6 +309,19 @@ class Vectors(Thesaurus):
 
         i.e. entry: [(feature, count), ...]
 
+        or of the form
+
+        d = {
+    '       monday': {
+                'det:the': 23,
+                'amod:awful': 1000,
+                'amod:terrible': 243,
+                ...
+            },
+    '       tuesday': { ... },
+            ...
+        }
+
         Difference between this class and Thesaurus:
          - removed allow_lexical_overlap and include_self parameters. It makes no sense to alter the features
          of an entry, but it is acceptable to pick and choose neighbours.
@@ -400,7 +414,28 @@ class Vectors(Thesaurus):
                        columns=df.columns, **kwargs)
 
     @classmethod
+    def from_dict_of_dicts(cls, d, **kwargs):
+        """
+        Load Vectors stored as dictionary of dictionaries.
+        :param d: Vectors of form
+            d = {
+        '       monday': {
+                    'det:the': 23,
+                    'amod:awful': 1000,
+                    'amod:terrible': 243,
+                    ...
+                },
+        '       tuesday': { ... },
+                ...
+            }
+        """
+        return Vectors(d=d)
+
+    @classmethod
     def from_wort_cache(cls, cache_path, **kwargs):
+        raise NotImplementedError
+        # TODO!!!
+        '''
         data_matrix_name = kwargs.pop('data_matrix_name', 'M_weight_transformed.dill')
         index_name = kwargs.pop('index_name', 'index.dill')
         inverted_index_name = kwargs.pop('inverted_index_name', 'inverted_index.dill')
@@ -411,6 +446,7 @@ class Vectors(Thesaurus):
 
         # Construct discoutils compatible datadict
         return None
+        '''
 
     def to_tsv(self, events_path, entries_path='', features_path='',
                entry_filter=lambda x: True, row_transform=lambda x: x,
@@ -502,7 +538,7 @@ class Vectors(Thesaurus):
             return None  # no vector for this
         return self.matrix[row, :]
 
-    def init_sims(self, vocab=None, n_neighbors=10, strategy='linear', knn='brute'):
+    def init_sims(self, vocab=None, n_neighbors=10, strategy='linear', knn='brute', nn_metric='l2'):
         """
         Prepares a mini thesaurus by placing all entries in `vocab` in a data structure. After that it is possible to
         get the nearest neighbours of an entry that this object has a vector for amongst all entries in `vocab`.
@@ -539,14 +575,16 @@ class Vectors(Thesaurus):
         # alternative, change 1-dist to dist in get_nearest_neighbour. Also, reduce the default value of
         # k from 200 to get another boost in performance
         X = self.matrix[selected_rows, :]
-        if X.shape[1] < 1000:
+
+        # thomas 29.12.2015: see slack msg by miro, with cosine dists, this doesn't work
+        if nn_metric == 'l2' and X.shape[1] < 1000:
             # if the matrix is smallish, make it dense and used KD Tree, it's 20-100x faster to query
             # and 4x slower to build
             if issparse(X):
                 X = X.A
             knn = 'kd_tree'
         self.nn = NearestNeighbors(algorithm=knn,
-                                   metric='l2',
+                                   metric=nn_metric,
                                    n_neighbors=n_neighbors).fit(X)
         if strategy != 'linear':
             self.get_nearest_neighbours = self.get_nearest_neighbours_skipping
@@ -616,14 +654,20 @@ class Vectors(Thesaurus):
     def from_shelf_readonly(cls, shelf_file_path, **kwargs):
         return Vectors(shelve.open(shelf_file_path, flag='r'), **kwargs)  # read only
 
-    def euclidean_distance(self, first, second):
+    def _vector_distance(self, dist_fn, first, second):
         v1 = self.get_vector(first)
         v2 = self.get_vector(second)
         if v1 is not None and v2 is not None:
-            return euclidean(v1.A if issparse(v1) else v1,
-                             v2.A if issparse(v2) else v2, )
+            return dist_fn( v1.A if issparse(v1) else v1,
+                            v2.A if issparse(v2) else v2, )
         else:
             return None
+
+    def euclidean_distance(self, first, second):
+        return self._vector_distance(euclidean, first, second)
+
+    def cosine_distance(self, first, second):
+        return self._vector_distance(cosine, first, second)
 
     def __str__(self):
         return '[%d vectors]' % len(self)
