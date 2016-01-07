@@ -5,7 +5,6 @@ import gzip
 import logging
 import os
 import shelve
-import dill
 import numpy as np
 import six
 from scipy.spatial.distance import cosine
@@ -419,13 +418,13 @@ class Vectors(Thesaurus):
         Load Vectors stored as dictionary of dictionaries.
         :param d: Vectors of form
             d = {
-        '       monday': {
+                'monday': {
                     'det:the': 23,
                     'amod:awful': 1000,
                     'amod:terrible': 243,
                     ...
                 },
-        '       tuesday': { ... },
+                'tuesday': { ... },
                 ...
             }
         """
@@ -434,7 +433,7 @@ class Vectors(Thesaurus):
     @classmethod
     def from_wort_cache(cls, cache_path, **kwargs):
         raise NotImplementedError
-        # TODO!!!
+        # TODO thomas!!!
         '''
         data_matrix_name = kwargs.pop('data_matrix_name', 'M_weight_transformed.dill')
         index_name = kwargs.pop('index_name', 'index.dill')

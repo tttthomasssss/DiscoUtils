@@ -349,11 +349,26 @@ def test_loading_unordered_feature_lists(tmpdir):
     v1 = v.from_tsv(filename)
     assert v.columns == v1.columns # rows can be in any order, but columns need to be sorted
     for word in d.keys():
-        assert_array_equal(v.get_vector(word).A, v.get_vector(word).A)
+        assert_array_equal(v.get_vector(word).A, v1.get_vector(word).A)
 
 
-def test_loading_apt_feature_dict():
-    pass # TODO!!!
+def test_loading_dict_of_dicts():
+    d = {
+        'monday': {
+            'det:the': 23,
+            'amod:terrible': 321
+        },
+        'tuesday': {
+            'amod:awful': 231,
+            'det:a': 12
+        }
+    }
+    v = Vectors(d)
+
+    v1 = v.from_dict_of_dicts(d)
+    assert v.columns == v1.columns
+    for word in d.keys():
+        assert_array_equal(v.get_vector(word).A, v1.get_vector(word).A))
 
 
 def test_to_dissect_sparse_files(vectors_c, tmpdir):
