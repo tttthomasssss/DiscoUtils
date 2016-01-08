@@ -431,13 +431,10 @@ class Vectors(Thesaurus):
         return Vectors(d=d)
 
     @classmethod
-    def from_wort_cache(cls, cache_path, **kwargs):
+    def from_wort_cache(cls, cache_path, data_matrix_name='M_weight_transformed.dill', index_name='index.dill',
+                        inverted_index_name='inverted_index.dill'):
         # TODO thomas!!!
         '''
-        data_matrix_name = kwargs.pop('data_matrix_name', 'M_weight_transformed.dill')
-        index_name = kwargs.pop('index_name', 'index.dill')
-        inverted_index_name = kwargs.pop('inverted_index_name', 'inverted_index.dill')
-
         with open(os.path.join(cache_path, index_name), 'rb') as index_file:
             index = dill.load(index_file)
         with open(os.path.join(cache_path, inverted_index_name), 'rb') as inv_index_file:
