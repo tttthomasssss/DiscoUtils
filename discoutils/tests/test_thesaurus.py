@@ -368,7 +368,7 @@ def test_loading_dict_of_dicts():
     v1 = v.from_dict_of_dicts(d)
     assert v.columns == v1.columns
     for word in d.keys():
-        assert_array_equal(v.get_vector(word).A, v1.get_vector(word).A))
+        assert_array_equal(v.get_vector(word).A, v1.get_vector(word).A)
 
 
 def test_to_dissect_sparse_files(vectors_c, tmpdir):
