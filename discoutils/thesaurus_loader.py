@@ -432,20 +432,23 @@ class Vectors(Thesaurus):
 
     @classmethod
     def from_wort_cache(cls, cache_path, **kwargs):
-        raise NotImplementedError
         # TODO thomas!!!
         '''
         data_matrix_name = kwargs.pop('data_matrix_name', 'M_weight_transformed.dill')
         index_name = kwargs.pop('index_name', 'index.dill')
         inverted_index_name = kwargs.pop('inverted_index_name', 'inverted_index.dill')
 
-        index = dill.load(open(os.path.join(cache_path, index_name), 'rb'))
-        inverted_index = dill.load(open(os.path.join(cache_path, inverted_index_name), 'rb'))
-        M = dill.load(open(os.path.join(cache_path, data_matrix_name), 'rb'))
+        with open(os.path.join(cache_path, index_name), 'rb') as index_file:
+            index = dill.load(index_file)
+        with open(os.path.join(cache_path, inverted_index_name), 'rb') as inv_index_file:
+            inverted_index = dill.load(inv_index_file)
+        with open(os.path.join(cache_path, data_matrix_name), 'rb') as matrix_file:
+            M = dill.load(matrix_file)
 
         # Construct discoutils compatible datadict
         return None
         '''
+        raise NotImplementedError
 
     def to_tsv(self, events_path, entries_path='', features_path='',
                entry_filter=lambda x: True, row_transform=lambda x: x,
