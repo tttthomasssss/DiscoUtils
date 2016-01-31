@@ -431,6 +431,31 @@ class Vectors(Thesaurus):
         return Vectors(d=d)
 
     @classmethod
+    def from_wort_model(cls, wort):
+        """
+        Initialise Vectors from an existing `wort` model.
+        :param wort: The fitted `wort` model
+        :param index: The `wort` index, mapping row indices to row names
+        :param inverted_index: The `wort` inverted index, mapping row names to row indices
+        :return: `discoutils` Vectors model
+        """
+
+        index = wort.get_index()
+        X = wort.get_matrix()
+
+        # index is already sorted (but inverted_index isn't)
+        row_names = index.values()
+
+        # Check if dim reduction has already been carried out:
+        if (X.shape[0] != X.shape[1]): # dim reduction already done!
+            columns = list(range(X.shape[1])) # columns are not interpretable in that case, so simply enumerate them
+        else:
+            columns = row_names # Still a square, symmetric matrix!
+
+        return Vectors(d=wort.to_dict(), matrix=X, columns=columns, rows=row_names)
+
+
+    @classmethod
     def from_wort_cache(cls, cache_path, data_matrix_name='M_weight_transformed.dill', index_name='index.dill',
                         inverted_index_name='inverted_index.dill'):
         # TODO thomas!!!
