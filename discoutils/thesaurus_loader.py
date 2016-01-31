@@ -454,24 +454,6 @@ class Vectors(Thesaurus):
 
         return Vectors(d=wort.to_dict(), matrix=X, columns=columns, rows=row_names)
 
-
-    @classmethod
-    def from_wort_cache(cls, cache_path, data_matrix_name='M_weight_transformed.dill', index_name='index.dill',
-                        inverted_index_name='inverted_index.dill'):
-        # TODO thomas!!!
-        '''
-        with open(os.path.join(cache_path, index_name), 'rb') as index_file:
-            index = dill.load(index_file)
-        with open(os.path.join(cache_path, inverted_index_name), 'rb') as inv_index_file:
-            inverted_index = dill.load(inv_index_file)
-        with open(os.path.join(cache_path, data_matrix_name), 'rb') as matrix_file:
-            M = dill.load(matrix_file)
-
-        # Construct discoutils compatible datadict
-        return None
-        '''
-        raise NotImplementedError
-
     def to_tsv(self, events_path, entries_path='', features_path='',
                entry_filter=lambda x: True, row_transform=lambda x: x,
                gzipped=False, enforce_word_entry_pos_format=True, dense_hd5=False):
