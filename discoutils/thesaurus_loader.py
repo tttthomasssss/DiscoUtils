@@ -431,6 +431,55 @@ class Vectors(Thesaurus):
         return Vectors(d=d)
 
     @classmethod
+    def from_glove_model(cls, vector_file):
+        """
+        WARNING: `glove_python` is required to use this function!
+
+        Load a GloVe vector model.
+        :param vector_path: path to glove model
+        :return: a `Vectors` object
+        """
+        from glove import Glove
+
+        model = Glove.load_stanford(vector_file)
+        vocab = model.dictionary.keys()
+
+        return Vectors._from_nnlm_model(model.word_vectors, vocab)
+
+    @classmethod
+    def from_word2vec_model(cls, vector_path):
+        """
+        WARNING: `gensim` is required to use this function!
+
+        Load a word2vec vector model.
+        :param vector_path: path to word2vec model
+        :return: a `Vectors` object
+        """
+        from gensim.models.word2vec import Word2Vec
+
+        model = Word2Vec.load_word2vec_format(vector_path, binary=vector_path.endswith('bin'))
+        vocab = model.vocab.keys()
+
+        return Vectors._from_nnlm_model(model, vocab)
+
+    @classmethod
+    def _from_nnlm_model(cls, model, vocab):
+        """
+        WARNING: Don't you call this function yourself!!!!
+        :param model: The NNLM model (currently supported are `word2vec` and `GloVe`)
+        :param vocab: The vocab of the NNLM model
+        :return:
+        """
+        vectors = {}
+
+        dims = len(model[next(iter(vocab))])  # vector dimensionality
+        dimension_names = ['f%02d' % i for i in range(dims)]
+        for word in vocab:
+            vectors[word] = zip(dimension_names, model[word])
+
+        return Vectors(vectors)
+
+    @classmethod
     def from_wort_model(cls, wort):
         """
         Initialise Vectors from an existing `wort` model.
