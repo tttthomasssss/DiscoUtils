@@ -444,11 +444,7 @@ class Vectors(Thesaurus):
         model = Glove.load_stanford(vector_file)
         vocab = model.dictionary.keys()
 
-        print(type(model.word_vectors))
-        print(model.word_vectors.shape)
-        print(len(vocab))
-
-        return Vectors._from_nnlm_model(model.word_vectors, vocab)
+        return Vectors._from_nnlm_model(model.word_vectors, vocab, dims=model.no_components)
 
     @classmethod
     def from_word2vec_model(cls, vector_path):
@@ -467,7 +463,7 @@ class Vectors(Thesaurus):
         return Vectors._from_nnlm_model(model, vocab)
 
     @classmethod
-    def _from_nnlm_model(cls, model, vocab):
+    def _from_nnlm_model(cls, model, vocab, dims=-1):
         """
         WARNING: Don't you call this function yourself!!!!
         :param model: The NNLM model (currently supported are `word2vec` and `GloVe`)
@@ -476,7 +472,9 @@ class Vectors(Thesaurus):
         """
         vectors = {}
 
-        dims = len(model[next(iter(vocab))])  # vector dimensionality
+        if (dims is None or dims <= 0):
+            dims = len(model[next(iter(vocab))])  # vector dimensionality
+
         dimension_names = ['f%02d' % i for i in range(dims)]
         for word in vocab:
             vectors[word] = zip(dimension_names, model[word])
