@@ -444,6 +444,9 @@ class Vectors(Thesaurus):
         model = Glove.load_stanford(vector_file)
         vocab = model.dictionary.keys()
 
+        print(type(model.word_vectors))
+        print(len(vocab))
+
         return Vectors._from_nnlm_model(model.word_vectors, vocab)
 
     @classmethod
