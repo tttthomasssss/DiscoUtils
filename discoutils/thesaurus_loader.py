@@ -445,6 +445,7 @@ class Vectors(Thesaurus):
         vocab = model.dictionary.keys()
 
         print(type(model.word_vectors))
+        print(model.word_vectors.shape)
         print(len(vocab))
 
         return Vectors._from_nnlm_model(model.word_vectors, vocab)
