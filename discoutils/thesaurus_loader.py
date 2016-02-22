@@ -1,5 +1,6 @@
 # coding=utf-8
 from collections import Counter
+from collections import defaultdict
 import contextlib
 import gzip
 import logging
@@ -7,6 +8,7 @@ import os
 import shelve
 import numpy as np
 import six
+import tables
 from scipy.spatial.distance import cosine
 from scipy.spatial.distance import euclidean
 from scipy.sparse import csr_matrix, issparse, coo_matrix
@@ -485,7 +487,7 @@ class Vectors(Thesaurus):
         :param wort: The fitted `wort` model
         :param index: The `wort` index, mapping row indices to row names
         :param inverted_index: The `wort` inverted index, mapping row names to row indices
-        :return: `discoutils` Vectors model
+        :return: Vectors model
         """
 
         index = wort.get_index()
@@ -501,6 +503,65 @@ class Vectors(Thesaurus):
             columns = row_names # Still a square, symmetric matrix!
 
         return Vectors(d=wort.to_dict(), matrix=X, columns=columns, rows=row_names)
+
+    @classmethod
+    def from_hdf(cls, path):
+        """
+        Initialise `Vectors` from an existing `hdf` file.
+        :param path: path to hdf file
+        :return: `Vectors` model
+        """
+        with tables.open_file(path, 'r') as f:
+            attrs = []
+            # Read sparse matrix
+            for attr in ['data', 'indices', 'indptr', 'shape']:
+                attrs.append(getattr(f.root, 'mat_{}.hdf'.format(attr)).read())
+
+            X = csr_matrix(tuple(attrs[:3]), shape=tuple(attrs[3]))
+
+            # Read rest
+            attrs = []
+            for attr_name in ['columns', 'row_names']:
+                attrs.append(np.array(getattr(f.root, attr_name).read()))
+
+            columns = attrs[0].tolist()
+            rows = attrs[1].tolist()
+
+        d = defaultdict(lambda: defaultdict(float))
+        r, c = X.nonzero()
+        for rr in r:
+            for cc in c:
+                row, col = rows[rr], columns[cc]
+                d[row][col] = X[rr, cc]
+
+        return Vectors(d=d)
+
+    def to_hdf(self, path, filename):
+        """
+        Store a `Vectors` model as hdf to `path`.
+        :param path: path to store the hdf file at
+        :param filename: name of the hdf file
+        :return:
+
+        PS: Sorry Miro, I'm too lazy to read the `PyTables` docs atm, hence all python collections are converted to numpy arrays...
+        """
+        if (not os.path.exists(path)):
+            os.makedirs(path)
+
+        # Store everything inside a np array
+        with tables.open_file(os.path.join(path, filename), 'a') as f:
+            for val, attr_name in zip([self.columns, self.row_names], ['columns', 'row_names']):
+                arr = np.asarray(val, dtype=np.str)
+                print(arr.dtype) # TODO: pytables doesnt like arrays of strings :(
+                atom = tables.Atom.from_dtype(arr.dtype)
+                d = f.create_carray(f.root, '{}.hdf'.format(attr_name), atom, arr.shape)
+                d[:] = arr
+
+            for attr in ['data', 'indices', 'indptr', 'shape']:
+                arr = np.asarray(getattr(self.matrix, attr))
+                atom = tables.Atom.from_dtype(arr.dtype)
+                d = f.create_carray(f.root, 'mat_{}.hdf'.format(attr), atom, arr.shape)
+                d[:] = arr
 
     def to_tsv(self, events_path, entries_path='', features_path='',
                entry_filter=lambda x: True, row_transform=lambda x: x,
