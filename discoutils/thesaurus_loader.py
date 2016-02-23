@@ -300,7 +300,7 @@ class Thesaurus(object):
 
 class Vectors(Thesaurus):
     def __init__(self, d, immutable=True, allow_lexical_overlap=True,
-                 matrix=None, columns=None, rows=None, noise=None,
+                 matrix=None, columns=None, rows=None, noise=None,dtype=np.float,
                  **kwargs):
         """
         A Thesaurus extension for storing feature vectors. Provides extra methods, e.g. dissect integration. Each
@@ -347,7 +347,7 @@ class Vectors(Thesaurus):
 
         # the matrix representation of this object
         if matrix is None and columns is None and rows is None:
-            self.matrix, self.columns, self.row_names = self.to_sparse_matrix()
+            self.matrix, self.columns, self.row_names = self.to_sparse_matrix(dtype=dtype)
         else:
             self.matrix, self.columns, self.row_names = matrix, columns, rows
         if self.matrix.shape != (len(self.row_names), len(self.columns)):
@@ -415,7 +415,7 @@ class Vectors(Thesaurus):
                        columns=df.columns, **kwargs)
 
     @classmethod
-    def from_dict_of_dicts(cls, d, **kwargs):
+    def from_dict_of_dicts(cls, d, dtype=np.float, **kwargs):
         """
         Load Vectors stored as dictionary of dictionaries.
         :param d: Vectors of form
@@ -430,7 +430,7 @@ class Vectors(Thesaurus):
                 ...
             }
         """
-        return Vectors(d=d)
+        return Vectors(d=d,dtype=np.float)
 
     @classmethod
     def from_glove_model(cls, vector_file):
