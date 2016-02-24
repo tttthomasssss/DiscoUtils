@@ -8,7 +8,6 @@ import os
 import shelve
 import numpy as np
 import six
-import tables
 from scipy.spatial.distance import cosine
 from scipy.spatial.distance import euclidean
 from scipy.sparse import csr_matrix, issparse, coo_matrix
@@ -540,6 +539,8 @@ class Vectors(Thesaurus):
         :param path: path to hdf file
         :return: `Vectors` model
         """
+        import tables
+
         with tables.open_file(path, 'r') as f:
             attrs = []
             # Read sparse matrix
@@ -574,6 +575,8 @@ class Vectors(Thesaurus):
 
         PS: Sorry Miro, I'm too lazy to read the `PyTables` docs atm, hence all python collections are converted to numpy arrays...
         """
+        import tables
+
         if (not os.path.exists(path)):
             os.makedirs(path)
 
