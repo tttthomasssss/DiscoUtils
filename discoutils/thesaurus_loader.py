@@ -505,6 +505,35 @@ class Vectors(Thesaurus):
         return Vectors(d=wort.to_dict(), matrix=X, columns=columns, rows=row_names)
 
     @classmethod
+    def from_joblib(cls, path):
+        """
+        Initialise `Vectors` from an existing `joblib` file.
+        :param path: path to joblib file
+        :return: `Vectors` model
+        """
+        import joblib
+        columns = joblib.load(os.path.join(path, 'columns.joblib'))
+        rows = joblib.load(os.path.join(path, 'row_names.joblib'))
+
+        # Load matrix attributes
+        data = joblib.load(os.path.join(path, 'matrix', 'data.joblib'))
+        indices = joblib.load(os.path.join(path, 'matrix', 'indices.joblib'))
+        indptr = joblib.load(os.path.join(path, 'matrix', 'indptr.joblib'))
+        shape = joblib.load(os.path.join(path, 'matrix', 'shape.joblib'))
+
+        X = csr_matrix((data, indices, indptr), shape=shape)
+
+        d = defaultdict(lambda: defaultdict(float))
+        r, c = X.nonzero()
+        for rr in r:
+            for cc in c:
+                row, col = rows[rr], columns[cc]
+                d[row][col] = X[rr, cc]
+
+        return Vectors(d=d)
+
+
+    @classmethod
     def from_hdf(cls, path):
         """
         Initialise `Vectors` from an existing `hdf` file.
@@ -551,9 +580,10 @@ class Vectors(Thesaurus):
         # Store everything inside a np array
         with tables.open_file(os.path.join(path, filename), 'a') as f:
             for val, attr_name in zip([self.columns, self.row_names], ['columns', 'row_names']):
-                arr = np.asarray(val, dtype=np.str)
+                arr = np.asarray(val, dtype=str)
                 print(arr.dtype) # TODO: pytables doesnt like arrays of strings :(
-                atom = tables.Atom.from_dtype(arr.dtype)
+                print('ALL ATOM TYPES: {}'.format(tables.Atom.all_types))
+                atom = tables.Atom.from_dtype(np.dtype('str'))
                 d = f.create_carray(f.root, '{}.hdf'.format(attr_name), atom, arr.shape)
                 d[:] = arr
 
@@ -562,6 +592,33 @@ class Vectors(Thesaurus):
                 atom = tables.Atom.from_dtype(arr.dtype)
                 d = f.create_carray(f.root, 'mat_{}.hdf'.format(attr), atom, arr.shape)
                 d[:] = arr
+
+    def to_joblib(self, path, compress=3):
+        """
+        Store a `Vectors` model as joblib to `path`.
+
+        [WARNING] - You need joblib installed to use that function.
+        :param path: path to store the joblib file at
+        :param compress: compression level of joblib file
+        :return:
+        """
+        import joblib
+
+        if (not os.path.exists(path)):
+            os.makedirs(path)
+
+        joblib.dump(self.columns, os.path.join(path, 'columns.joblib'), compress=compress)
+        joblib.dump(self.row_names, os.path.join(path, 'row_names.joblib'), compress=compress)
+
+        # Store matrix attributes
+        if (not os.path.exists(os.path.join(path, 'matrix'))):
+            os.makedirs(os.path.join(path, 'matrix'))
+
+        joblib.dump(self.matrix.data, os.path.join(path, 'matrix', 'data.joblib'))
+        joblib.dump(self.matrix.indices, os.path.join(path, 'matrix', 'indices.joblib'))
+        joblib.dump(self.matrix.indptr, os.path.join(path, 'matrix', 'indptr.joblib'))
+        joblib.dump(self.matrix.shape, os.path.join(path, 'matrix', 'shape.joblib'))
+
 
     def to_tsv(self, events_path, entries_path='', features_path='',
                entry_filter=lambda x: True, row_transform=lambda x: x,
