@@ -617,10 +617,10 @@ class Vectors(Thesaurus):
         if (not os.path.exists(os.path.join(path, 'matrix'))):
             os.makedirs(os.path.join(path, 'matrix'))
 
-        joblib.dump(self.matrix.data, os.path.join(path, 'matrix', 'data.joblib'))
-        joblib.dump(self.matrix.indices, os.path.join(path, 'matrix', 'indices.joblib'))
-        joblib.dump(self.matrix.indptr, os.path.join(path, 'matrix', 'indptr.joblib'))
-        joblib.dump(self.matrix.shape, os.path.join(path, 'matrix', 'shape.joblib'))
+        joblib.dump(self.matrix.data, os.path.join(path, 'matrix', 'data.joblib'), compress=compress)
+        joblib.dump(self.matrix.indices, os.path.join(path, 'matrix', 'indices.joblib'), compress=compress)
+        joblib.dump(self.matrix.indptr, os.path.join(path, 'matrix', 'indptr.joblib'), compress=compress)
+        joblib.dump(self.matrix.shape, os.path.join(path, 'matrix', 'shape.joblib'), compress=compress)
 
 
     def to_tsv(self, events_path, entries_path='', features_path='',
