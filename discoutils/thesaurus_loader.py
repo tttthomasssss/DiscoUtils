@@ -442,7 +442,7 @@ class Vectors(Thesaurus):
         """
         from glove import Glove
 
-        model = Glove.load_stanford(vector_file)
+        model = Glove.load_stanford(vector_file) if isinstance(vector_file, str) else vector_file
         vocab = model.dictionary.keys()
 
         vectors = {}
