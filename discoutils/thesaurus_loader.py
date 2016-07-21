@@ -456,17 +456,20 @@ class Vectors(Thesaurus):
         return Vectors(vectors)
 
     @classmethod
-    def from_word2vec_model(cls, vector_path):
+    def from_word2vec_model(cls, word2vec_model):
         """
         WARNING: `gensim` is required to use this function!
 
         Load a word2vec vector model.
-        :param vector_path: path to word2vec model
+        :param word2vec_model: path to word2vec model or a fitted word2vec model
         :return: a `Vectors` object
         """
         from gensim.models.word2vec import Word2Vec
+        if (isinstance(word2vec_model, str)):
+            model = Word2Vec.load_word2vec_format(word2vec_model, binary=word2vec_model.endswith('bin'))
+        else:
+            model = word2vec_model
 
-        model = Word2Vec.load_word2vec_format(vector_path, binary=vector_path.endswith('bin'))
         vocab = model.vocab.keys()
 
         vectors = {}
@@ -480,17 +483,20 @@ class Vectors(Thesaurus):
         return Vectors(vectors)
 
     @classmethod
-    def from_wort_model(cls, wort):
+    def from_wort_model(cls, wort_model):
         """
         Initialise Vectors from an existing `wort` model.
-        :param wort: The fitted `wort` model
+        :param wort_model: The fitted `wort` model or the path to a serialised `wort` model
         :param index: The `wort` index, mapping row indices to row names
         :param inverted_index: The `wort` inverted index, mapping row names to row indices
         :return: Vectors model
         """
+        if (isinstance(wort_model, str)):
+            from wort.vsm import VSMVectorizer
+            wort_model = VSMVectorizer.load_from_file(wort_model)
 
-        index = wort.get_index()
-        X = wort.get_matrix()
+        index = wort_model.get_index()
+        X = wort_model.get_matrix()
 
         # index is already sorted (but inverted_index isn't)
         row_names = index.values()
@@ -501,7 +507,7 @@ class Vectors(Thesaurus):
         else:
             columns = row_names # Still a square, symmetric matrix!
 
-        return Vectors(d=wort.to_dict(), matrix=X, columns=columns, rows=row_names)
+        return Vectors(d=wort_model.to_dict(), matrix=X, columns=columns, rows=row_names)
 
     @classmethod
     def from_joblib(cls, path):
