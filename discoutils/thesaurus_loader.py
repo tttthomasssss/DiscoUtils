@@ -464,9 +464,18 @@ class Vectors(Thesaurus):
         :param word2vec_model: path to word2vec model or a fitted word2vec model
         :return: a `Vectors` object
         """
-        from gensim.models.word2vec import Word2Vec
+        try:
+            import gensim # gensim version hack
+            if (int(gensim.__version__.split('.')[0]) < 1):
+                from gensim.models.word2vec import Word2Vec as Word2VecLoader
+            else:
+                from gensim.models import KeyedVectors as Word2VecLoader
+        except ImportError as ex:
+            logging.error('Gensim is required to use this method!')
+            raise ex
+
         if (isinstance(word2vec_model, str)):
-            model = Word2Vec.load_word2vec_format(word2vec_model, binary=word2vec_model.endswith('bin'))
+            model = Word2VecLoader.load_word2vec_format(word2vec_model, binary=word2vec_model.endswith('bin'))
         else:
             model = word2vec_model
 
